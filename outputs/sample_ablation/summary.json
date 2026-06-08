@@ -1,0 +1,51 @@
+{
+  "data_root": "../data/sample/xperience-10m-sample",
+  "video": "fisheye_cam0.mp4",
+  "target": "action",
+  "num_windows": 120,
+  "classes": [
+    "Pick up kettle",
+    "Position kettle to pour"
+  ],
+  "experiments": {
+    "rgb_only": {
+      "accuracy": 1.0,
+      "macro_f1": 1.0,
+      "weighted_f1": 1.0,
+      "balanced_accuracy": 1.0,
+      "num_eval": 30,
+      "num_classes": 2,
+      "experiment": "rgb_only",
+      "feature_dim": 686,
+      "num_windows": 120,
+      "num_train": 90,
+      "num_test": 30
+    },
+    "hand_joints_only": {
+      "accuracy": 0.9333333333333333,
+      "macro_f1": 0.9068322981366459,
+      "weighted_f1": 0.9366459627329193,
+      "balanced_accuracy": 0.9583333333333333,
+      "num_eval": 30,
+      "num_classes": 2,
+      "experiment": "hand_joints_only",
+      "feature_dim": 882,
+      "num_windows": 120,
+      "num_train": 90,
+      "num_test": 30
+    },
+    "rgb_hand_fusion": {
+      "accuracy": 0.9333333333333333,
+      "macro_f1": 0.9068322981366459,
+      "weighted_f1": 0.9366459627329193,
+      "balanced_accuracy": 0.9583333333333333,
+      "num_eval": 30,
+      "num_classes": 2,
+      "experiment": "rgb_hand_fusion",
+      "feature_dim": 1568,
+      "num_windows": 120,
+      "num_train": 90,
+      "num_test": 30
+    }
+  }
+}

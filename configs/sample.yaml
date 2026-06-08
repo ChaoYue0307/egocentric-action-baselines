@@ -1,0 +1,12 @@
+data_root: /Users/chaoyue/Library/CloudStorage/Dropbox/Ropedia/data/sample/xperience-10m-sample
+video: fisheye_cam0.mp4
+target: action
+window_frames: 20
+stride_frames: 5
+min_label_fraction: 0.6
+test_fraction: 0.25
+max_windows: 240
+epochs: 500
+learning_rate: 0.15
+l2: 0.001
+seed: 7
