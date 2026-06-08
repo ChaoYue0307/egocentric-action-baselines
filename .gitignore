@@ -5,6 +5,7 @@ __pycache__/
 outputs/*
 !outputs/.gitkeep
 !outputs/sample_ablation/
+outputs/sample_ablation/*
 !outputs/sample_ablation/summary.json
 data/
 *.hdf5
