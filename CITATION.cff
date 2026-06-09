@@ -1,0 +1,10 @@
+cff-version: 1.2.0
+message: "If this learning project helps your work, please cite it."
+title: "Egocentric Action Baselines"
+authors:
+  - family-names: "ChaoYue0307"
+repository-code: "https://github.com/ChaoYue0307/egocentric-action-baselines"
+url: "https://chaoyue0307.github.io/egocentric-action-baselines/"
+date-released: "2026-06-09"
+version: "0.1.0"
+license: "MIT"

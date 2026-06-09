@@ -17,12 +17,21 @@ dependencies = [
 [project.optional-dependencies]
 mlp = ["torch"]
 test = ["pytest"]
+dev = ["pytest", "ruff"]
 
 [project.scripts]
 ego-action-ablation = "ego_action_baselines_cli:main"
 
 [tool.setuptools]
-py-modules = ["ego_action_baselines", "ego_action_baselines_cli"]
+py-modules = ["adapters", "ego_action_baselines", "ego_action_baselines_cli"]
 
 [tool.setuptools.package-dir]
 "" = "src"
+
+[tool.ruff]
+line-length = 180
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "UP", "B"]
+ignore = ["E501"]

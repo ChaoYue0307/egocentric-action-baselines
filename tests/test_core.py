@@ -8,7 +8,9 @@ import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
+from adapters import XperienceActionAdapter  # noqa: E402
 from ego_action_baselines import (  # noqa: E402
+    WindowSample,
     chronological_split,
     compute_metrics,
     frame_labels_from_caption,
@@ -16,7 +18,6 @@ from ego_action_baselines import (  # noqa: E402
     make_split,
     run_experiment,
     softmax,
-    WindowSample,
 )
 
 
@@ -80,3 +81,10 @@ def test_run_experiment_rejects_unknown_model(tmp_path: Path) -> None:
         assert "Unknown model type" in str(exc)
     else:
         raise AssertionError("Expected ValueError")
+
+
+def test_xperience_action_adapter_paths(tmp_path: Path) -> None:
+    adapter = XperienceActionAdapter(tmp_path)
+    assert adapter.annotation_path == tmp_path / "annotation.hdf5"
+    assert adapter.video_path == tmp_path / "fisheye_cam0.mp4"
+    assert "hand_joints_3d" in adapter.describe()["signals"]

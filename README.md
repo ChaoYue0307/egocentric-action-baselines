@@ -84,6 +84,9 @@ ego-action-ablation --data-root "$DATA_ROOT" --model both --epochs 300
 | --- | --- |
 | `scripts/run_ablation.py` | command-line entry point for RGB, hand, and fusion experiments |
 | `src/ego_action_baselines.py` | dataset loading, feature extraction, training, and metrics |
+| `src/adapters.py` | source boundary for video frames, hand poses, and labels |
+| `notebooks/01_action_baseline_walkthrough.ipynb` | step-by-step notebook companion |
+| `reports/action_baseline_report.md` | paper-style method, result, and limitation summary |
 | `docs/index.html` | interactive tutorial webpage |
 | `docs/concepts.md` | glossary for CV/ML terms |
 | `outputs/sample_ablation/summary.json` | compact example result |

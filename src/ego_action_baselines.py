@@ -295,7 +295,7 @@ def train_torch_mlp(
 
 def compute_metrics(y_true: np.ndarray, y_pred: np.ndarray, class_names: list[str]) -> tuple[dict, list[dict], np.ndarray]:
     cm = np.zeros((len(class_names), len(class_names)), dtype=np.int64)
-    for t, p in zip(y_true, y_pred):
+    for t, p in zip(y_true, y_pred, strict=True):
         cm[int(t), int(p)] += 1
     rows, f1s, recalls, weighted = [], [], [], 0.0
     total = int(cm.sum())
