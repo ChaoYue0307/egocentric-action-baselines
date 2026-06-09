@@ -16,9 +16,11 @@ from ego_action_baselines import (  # noqa: E402
     frame_labels_from_caption,
     majority_label,
     make_split,
+    predict_majority,
     run_experiment,
     softmax,
 )
+from ego_action_baselines_cli import aggregate_summaries, model_types_for  # noqa: E402
 
 
 def test_majority_label_respects_fraction() -> None:
@@ -88,3 +90,20 @@ def test_xperience_action_adapter_paths(tmp_path: Path) -> None:
     assert adapter.annotation_path == tmp_path / "annotation.hdf5"
     assert adapter.video_path == tmp_path / "fisheye_cam0.mp4"
     assert "hand_joints_3d" in adapter.describe()["signals"]
+
+
+def test_majority_baseline_predictions() -> None:
+    y = np.asarray([0, 0, 1, 1, 1], dtype=np.int64)
+    probs, history = predict_majority(y, np.asarray([0, 1, 2, 3]), np.asarray([4]), 2)
+    assert probs.argmax(axis=1).tolist() == [0]
+    assert history[0]["majority_class_id"] == 0
+
+
+def test_model_types_and_aggregate() -> None:
+    assert model_types_for("all") == ["majority", "softmax", "mlp"]
+    aggregate = aggregate_summaries([
+        {"experiments": {"rgb_only": {"accuracy": 0.5, "macro_f1": 0.4}}},
+        {"experiments": {"rgb_only": {"accuracy": 1.0, "macro_f1": 0.8}}},
+    ])
+    assert aggregate["num_episodes"] == 2
+    assert aggregate["experiments"]["rgb_only"]["accuracy_mean"] == 0.75

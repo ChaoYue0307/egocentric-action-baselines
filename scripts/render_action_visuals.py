@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import csv
 from pathlib import Path
 
 
@@ -40,8 +41,51 @@ def render(summary_path: Path, output_path: Path) -> None:
     output_path.write_text(svg, encoding="utf-8")
 
 
+def render_confusion_matrix(csv_path: Path, output_path: Path) -> None:
+    if csv_path.exists():
+        with csv_path.open(newline="", encoding="utf-8") as fp:
+            rows = list(csv.reader(fp))
+        labels = rows[0][1:]
+        matrix = [[int(x) for x in row[1:]] for row in rows[1:]]
+        subtitle = "Generated from outputs/sample_ablation/rgb_only/confusion_matrix.csv"
+    else:
+        labels = ["action 0", "action 1"]
+        matrix = [[21, 0], [9, 0]]
+        subtitle = "Preview from the committed sample summary; rerun visuals after a full experiment for exact counts."
+    max_value = max([value for row in matrix for value in row] + [1])
+    cell = 54
+    left = 150
+    top = 116
+    cells = []
+    for i, row in enumerate(matrix):
+        for j, value in enumerate(row):
+            opacity = 0.18 + 0.72 * value / max_value
+            cells.append(f'<rect x="{left + j * cell}" y="{top + i * cell}" width="{cell - 4}" height="{cell - 4}" rx="10" fill="#38bdf8" opacity="{opacity:.2f}"/>')
+            cells.append(f'<text x="{left + j * cell + 25}" y="{top + i * cell + 31}" text-anchor="middle" fill="#e2e8f0" font-family="Inter, Arial" font-size="14">{value}</text>')
+    label_text = []
+    for i, _label in enumerate(labels):
+        label_text.append(f'<text x="{left + i * cell + 25}" y="102" text-anchor="middle" fill="#94a3b8" font-family="Inter, Arial" font-size="12">{i}</text>')
+        label_text.append(f'<text x="132" y="{top + i * cell + 31}" text-anchor="end" fill="#94a3b8" font-family="Inter, Arial" font-size="12">{i}</text>')
+    legend = " · ".join(f"{idx}: {label}" for idx, label in enumerate(labels))
+    height = max(360, top + len(labels) * cell + 88)
+    width = max(760, left + len(labels) * cell + 70)
+    svg = f"""<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" viewBox="0 0 {width} {height}">
+  <rect width="{width}" height="{height}" rx="28" fill="#020617"/>
+  <text x="48" y="48" fill="#f8fafc" font-size="26" font-weight="700" font-family="Inter, Arial">Confusion Matrix</text>
+  <text x="48" y="76" fill="#94a3b8" font-size="13" font-family="Inter, Arial">{subtitle}</text>
+  <text x="48" y="{height - 44}" fill="#94a3b8" font-size="12" font-family="Inter, Arial">{legend}</text>
+  <text x="{left}" y="{height - 18}" fill="#64748b" font-size="13" font-family="Inter, Arial">columns: predicted · rows: true</text>
+  {''.join(label_text)}
+  {''.join(cells)}
+</svg>
+"""
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.write_text(svg, encoding="utf-8")
+
+
 def main() -> int:
     render(Path("outputs/sample_ablation/summary.json"), Path("docs/assets/action_metrics.svg"))
+    render_confusion_matrix(Path("outputs/sample_ablation/rgb_only/confusion_matrix.csv"), Path("docs/assets/confusion_matrix.svg"))
     return 0
 
 

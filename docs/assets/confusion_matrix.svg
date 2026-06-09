@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="360" viewBox="0 0 760 360">
+  <rect width="760" height="360" rx="28" fill="#020617"/>
+  <text x="48" y="48" fill="#f8fafc" font-size="26" font-weight="700" font-family="Inter, Arial">Confusion Matrix</text>
+  <text x="48" y="76" fill="#94a3b8" font-size="13" font-family="Inter, Arial">Generated from outputs/sample_ablation/rgb_only/confusion_matrix.csv</text>
+  <text x="48" y="316" fill="#94a3b8" font-size="12" font-family="Inter, Arial">0: Pick up kettle · 1: Position kettle to pour</text>
+  <text x="150" y="342" fill="#64748b" font-size="13" font-family="Inter, Arial">columns: predicted · rows: true</text>
+  <text x="175" y="102" text-anchor="middle" fill="#94a3b8" font-family="Inter, Arial" font-size="12">0</text><text x="132" y="147" text-anchor="end" fill="#94a3b8" font-family="Inter, Arial" font-size="12">0</text><text x="229" y="102" text-anchor="middle" fill="#94a3b8" font-family="Inter, Arial" font-size="12">1</text><text x="132" y="201" text-anchor="end" fill="#94a3b8" font-family="Inter, Arial" font-size="12">1</text>
+  <rect x="150" y="116" width="50" height="50" rx="10" fill="#38bdf8" opacity="0.18"/><text x="175" y="147" text-anchor="middle" fill="#e2e8f0" font-family="Inter, Arial" font-size="14">0</text><rect x="204" y="116" width="50" height="50" rx="10" fill="#38bdf8" opacity="0.18"/><text x="229" y="147" text-anchor="middle" fill="#e2e8f0" font-family="Inter, Arial" font-size="14">0</text><rect x="150" y="170" width="50" height="50" rx="10" fill="#38bdf8" opacity="0.49"/><text x="175" y="201" text-anchor="middle" fill="#e2e8f0" font-family="Inter, Arial" font-size="14">9</text><rect x="204" y="170" width="50" height="50" rx="10" fill="#38bdf8" opacity="0.90"/><text x="229" y="201" text-anchor="middle" fill="#e2e8f0" font-family="Inter, Arial" font-size="14">21</text>
+</svg>

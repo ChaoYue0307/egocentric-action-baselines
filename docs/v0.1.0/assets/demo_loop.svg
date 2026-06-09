@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 240" role="img" aria-label="Animated demo preview for action baselines">
+  <rect width="960" height="240" rx="28" fill="#020617"/>
+  <text x="40" y="52" fill="#f8fafc" font-family="Inter,Arial" font-size="28" font-weight="800">Action demo loop</text>
+  <text x="40" y="82" fill="#94a3b8" font-family="Inter,Arial" font-size="15">window ’ features ’ baseline comparison ’ confusion matrix</text>
+  <g fill="#0f172a" stroke="#334155">
+    <rect x="50" y="118" width="150" height="64" rx="16"/>
+    <rect x="278" y="118" width="150" height="64" rx="16"/>
+    <rect x="506" y="118" width="150" height="64" rx="16"/>
+    <rect x="734" y="118" width="150" height="64" rx="16"/>
+  </g>
+  <g fill="#e2e8f0" font-family="Inter,Arial" font-size="15" text-anchor="middle">
+    <text x="125" y="156">Temporal window</text>
+    <text x="353" y="156">Feature vector</text>
+    <text x="581" y="156">Softmax / MLP</text>
+    <text x="809" y="156">Metrics</text>
+  </g>
+  <circle cx="125" cy="204" r="8" fill="#38bdf8">
+    <animate attributeName="cx" values="125;353;581;809;125" dur="5s" repeatCount="indefinite"/>
+    <animate attributeName="fill" values="#38bdf8;#a78bfa;#34d399;#f59e0b;#38bdf8" dur="5s" repeatCount="indefinite"/>
+  </circle>
+</svg>

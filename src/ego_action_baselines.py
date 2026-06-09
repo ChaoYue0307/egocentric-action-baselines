@@ -293,6 +293,17 @@ def train_torch_mlp(
     return probs.astype(np.float32), history, model
 
 
+def predict_majority(y: np.ndarray, train_idx: np.ndarray, test_idx: np.ndarray, n_classes: int) -> tuple[np.ndarray, list[dict]]:
+    counts = np.bincount(y[train_idx], minlength=n_classes).astype(np.float32)
+    majority = int(np.argmax(counts))
+    confidence = float(counts[majority] / max(float(counts.sum()), 1.0))
+    probs = np.zeros((len(test_idx), n_classes), dtype=np.float32)
+    if len(test_idx):
+        probs[:, majority] = confidence
+    history = [{"epoch": 0, "train_accuracy": float(np.mean(y[train_idx] == majority)), "majority_class_id": majority}]
+    return probs, history
+
+
 def compute_metrics(y_true: np.ndarray, y_pred: np.ndarray, class_names: list[str]) -> tuple[dict, list[dict], np.ndarray]:
     cm = np.zeros((len(class_names), len(class_names)), dtype=np.int64)
     for t, p in zip(y_true, y_pred, strict=True):
@@ -332,7 +343,10 @@ def write_csv(path: Path, rows: list[dict], fieldnames: list[str]) -> None:
 def run_experiment(name: str, X: np.ndarray, y: np.ndarray, class_names: list[str], windows: list[WindowSample], out_dir: Path, args, model_type: str = "softmax") -> dict:
     train_idx, test_idx = make_split(y, args.test_fraction, args.seed, args.split_strategy)
     Xs, mean, std = fit_scaler(X, train_idx)
-    if model_type == "softmax":
+    if model_type == "majority":
+        probs, history = predict_majority(y, train_idx, test_idx, len(class_names))
+        model_payload = {"mean": mean, "std": std, "majority": np.asarray([int(np.argmax(np.bincount(y[train_idx], minlength=len(class_names))))], dtype=np.int64)}
+    elif model_type == "softmax":
         W, b, history = train_softmax(Xs, y, train_idx, len(class_names), args.epochs, args.learning_rate, args.l2, args.seed)
         probs = softmax(Xs[test_idx] @ W + b)
         model_payload = {"mean": mean, "std": std, "W": W, "b": b}
@@ -367,7 +381,7 @@ def run_experiment(name: str, X: np.ndarray, y: np.ndarray, class_names: list[st
             "correct": int(pred[k] == y[idx]),
         })
     write_csv(exp_dir / "predictions.csv", pred_rows, ["window_index", "start_frame", "end_frame", "true_label", "predicted_label", "confidence", "correct"])
-    if model_type == "softmax":
+    if model_type in ("softmax", "majority"):
         np.savez_compressed(exp_dir / "model.npz", **model_payload, class_names=np.asarray(class_names, dtype=object))
     else:
         import torch

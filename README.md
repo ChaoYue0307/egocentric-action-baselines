@@ -13,6 +13,7 @@ video, predict what action is happening. The repo shows how RGB appearance,
 hand-joint motion, and early sensor fusion each contribute to that prediction.
 
 ![Egocentric action baseline tutorial preview](docs/assets/readme_preview.svg)
+![Animated action demo loop](docs/assets/demo_loop.svg)
 
 ## Interactive Tutorial
 
@@ -78,6 +79,15 @@ pip install -e ".[mlp]"
 ego-action-ablation --data-root "$DATA_ROOT" --model both --epochs 300
 ```
 
+To run a stronger multi-episode check when you have more samples:
+
+```bash
+ego-action-ablation \
+  --data-roots /path/to/sample_a /path/to/sample_b \
+  --model all \
+  --output-dir outputs/multi_episode_eval
+```
+
 ## Repository Map
 
 | Path | Purpose |
@@ -107,6 +117,7 @@ make pages
 | `rgb_only` | sampled frames from `fisheye_cam0.mp4` | Can appearance and scene layout identify the action? |
 | `hand_joints_only` | left/right 3D hand joints from `annotation.hdf5` | Is hand motion enough to infer intent? |
 | `rgb_hand_fusion` | RGB + hand features | Does combining visual context with hand motion help? |
+| `*_majority` | no visual or hand features | Does the classifier beat the class-prior baseline? |
 | `*_mlp` | same features with a small PyTorch MLP head | Does a nonlinear classifier improve the chronological split? |
 
 Sample result from a short run:
@@ -120,6 +131,8 @@ Sample result from a short run:
 Each run writes `summary.json` plus per-experiment `metrics.json`,
 `per_class_metrics.csv`, `confusion_matrix.csv`, `predictions.csv`, and
 `model.npz`.
+Batch runs also write `aggregate_summary.json` with mean and standard deviation
+across episode roots.
 
 ## How To Read The Result
 
