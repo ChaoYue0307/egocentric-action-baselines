@@ -5,6 +5,9 @@
 Learn how first-person action recognition works by comparing three small,
 inspectable baselines on one Xperience-10M pour-over coffee episode.
 
+Part of the Egocentric Vision Learning Hub:
+https://chaoyue0307.github.io/egocentric-vision-learning-hub/
+
 The task is simple to state: given a short temporal window from an egocentric
 video, predict what action is happening. The repo shows how RGB appearance,
 hand-joint motion, and early sensor fusion each contribute to that prediction.
@@ -68,6 +71,15 @@ evaluation, which reduces leakage from overlapping windows.
 | `docs/index.html` | interactive tutorial webpage |
 | `docs/concepts.md` | glossary for CV/ML terms |
 | `outputs/sample_ablation/summary.json` | compact example result |
+
+## Common Commands
+
+```bash
+make test
+make help
+make visuals
+make pages
+```
 
 ## Baselines
 
