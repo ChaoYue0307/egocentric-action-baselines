@@ -189,6 +189,24 @@ def stratified_split(y: np.ndarray, test_fraction: float, seed: int) -> tuple[np
     return np.asarray(train, dtype=np.int64), np.asarray(test, dtype=np.int64)
 
 
+def chronological_split(y: np.ndarray, test_fraction: float) -> tuple[np.ndarray, np.ndarray]:
+    """Split windows by time order to reduce leakage from overlapping windows."""
+    n = len(y)
+    if n < 2:
+        return np.arange(n, dtype=np.int64), np.asarray([], dtype=np.int64)
+    n_test = max(1, min(n - 1, int(round(n * test_fraction))))
+    split = n - n_test
+    return np.arange(split, dtype=np.int64), np.arange(split, n, dtype=np.int64)
+
+
+def make_split(y: np.ndarray, test_fraction: float, seed: int, strategy: str) -> tuple[np.ndarray, np.ndarray]:
+    if strategy == "chronological":
+        return chronological_split(y, test_fraction)
+    if strategy == "stratified":
+        return stratified_split(y, test_fraction, seed)
+    raise ValueError(f"Unknown split strategy: {strategy}")
+
+
 def fit_scaler(X: np.ndarray, train_idx: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     mean = X[train_idx].mean(axis=0)
     std = X[train_idx].std(axis=0)
@@ -260,13 +278,13 @@ def write_csv(path: Path, rows: list[dict], fieldnames: list[str]) -> None:
 
 
 def run_experiment(name: str, X: np.ndarray, y: np.ndarray, class_names: list[str], windows: list[WindowSample], out_dir: Path, args) -> dict:
-    train_idx, test_idx = stratified_split(y, args.test_fraction, args.seed)
+    train_idx, test_idx = make_split(y, args.test_fraction, args.seed, args.split_strategy)
     Xs, mean, std = fit_scaler(X, train_idx)
     W, b, history = train_softmax(Xs, y, train_idx, len(class_names), args.epochs, args.learning_rate, args.l2, args.seed)
     probs = softmax(Xs[test_idx] @ W + b)
     pred = probs.argmax(axis=1)
     metrics, per_class, cm = compute_metrics(y[test_idx], pred, class_names)
-    metrics.update({"experiment": name, "feature_dim": int(X.shape[1]), "num_windows": int(len(y)), "num_train": int(len(train_idx)), "num_test": int(len(test_idx))})
+    metrics.update({"experiment": name, "feature_dim": int(X.shape[1]), "num_windows": int(len(y)), "num_train": int(len(train_idx)), "num_test": int(len(test_idx)), "split_strategy": args.split_strategy})
     exp_dir = out_dir / name
     exp_dir.mkdir(parents=True, exist_ok=True)
     (exp_dir / "metrics.json").write_text(json.dumps(metrics, indent=2), encoding="utf-8")

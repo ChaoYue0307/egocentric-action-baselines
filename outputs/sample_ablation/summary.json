@@ -3,49 +3,53 @@
   "video": "fisheye_cam0.mp4",
   "target": "action",
   "num_windows": 120,
+  "split_strategy": "chronological",
   "classes": [
     "Pick up kettle",
     "Position kettle to pour"
   ],
   "experiments": {
     "rgb_only": {
-      "accuracy": 1.0,
-      "macro_f1": 1.0,
-      "weighted_f1": 1.0,
-      "balanced_accuracy": 1.0,
+      "accuracy": 0.7,
+      "macro_f1": 0.8235294117647058,
+      "weighted_f1": 0.8235294117647058,
+      "balanced_accuracy": 0.7,
       "num_eval": 30,
       "num_classes": 2,
       "experiment": "rgb_only",
       "feature_dim": 686,
       "num_windows": 120,
       "num_train": 90,
-      "num_test": 30
+      "num_test": 30,
+      "split_strategy": "chronological"
     },
     "hand_joints_only": {
-      "accuracy": 0.9333333333333333,
-      "macro_f1": 0.9068322981366459,
-      "weighted_f1": 0.9366459627329193,
-      "balanced_accuracy": 0.9583333333333333,
+      "accuracy": 0.16666666666666666,
+      "macro_f1": 0.2857142857142857,
+      "weighted_f1": 0.2857142857142857,
+      "balanced_accuracy": 0.16666666666666666,
       "num_eval": 30,
       "num_classes": 2,
       "experiment": "hand_joints_only",
       "feature_dim": 882,
       "num_windows": 120,
       "num_train": 90,
-      "num_test": 30
+      "num_test": 30,
+      "split_strategy": "chronological"
     },
     "rgb_hand_fusion": {
-      "accuracy": 0.9333333333333333,
-      "macro_f1": 0.9068322981366459,
-      "weighted_f1": 0.9366459627329193,
-      "balanced_accuracy": 0.9583333333333333,
+      "accuracy": 0.06666666666666667,
+      "macro_f1": 0.125,
+      "weighted_f1": 0.125,
+      "balanced_accuracy": 0.06666666666666667,
       "num_eval": 30,
       "num_classes": 2,
       "experiment": "rgb_hand_fusion",
       "feature_dim": 1568,
       "num_windows": 120,
       "num_train": 90,
-      "num_test": 30
+      "num_test": 30,
+      "split_strategy": "chronological"
     }
   }
 }

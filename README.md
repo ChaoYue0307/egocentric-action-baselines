@@ -1,5 +1,7 @@
 # Egocentric Action Baselines
 
+[![CI](https://github.com/ChaoYue0307/egocentric-action-baselines/actions/workflows/ci.yml/badge.svg)](https://github.com/ChaoYue0307/egocentric-action-baselines/actions/workflows/ci.yml)
+
 Learn how first-person action recognition works by comparing three small,
 inspectable baselines on one Xperience-10M pour-over coffee episode.
 
@@ -49,10 +51,13 @@ pip install -r requirements.txt
 python scripts/run_ablation.py \
   --data-root "$DATA_ROOT" \
   --output-dir outputs/sample_ablation \
+  --split-strategy chronological \
   --max-windows 240
 ```
 
 Use `--max-windows 0` to run all labeled windows.
+The default `chronological` split keeps the last portion of the timeline for
+evaluation, which reduces leakage from overlapping windows.
 
 ## Repository Map
 
@@ -76,9 +81,9 @@ Sample result from a short run:
 
 | Experiment | Accuracy | Macro F1 | Feature Dim |
 | --- | ---: | ---: | ---: |
-| `rgb_only` | 1.000 | 1.000 | 686 |
-| `hand_joints_only` | 0.933 | 0.907 | 882 |
-| `rgb_hand_fusion` | 0.933 | 0.907 | 1568 |
+| `rgb_only` | 0.700 | 0.824 | 686 |
+| `hand_joints_only` | 0.167 | 0.286 | 882 |
+| `rgb_hand_fusion` | 0.067 | 0.125 | 1568 |
 
 Each run writes `summary.json` plus per-experiment `metrics.json`,
 `per_class_metrics.csv`, `confusion_matrix.csv`, `predictions.csv`, and
