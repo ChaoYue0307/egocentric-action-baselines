@@ -9,13 +9,10 @@ hand-joint motion, and early sensor fusion each contribute to that prediction.
 
 ## Interactive Tutorial
 
-Open the reader-facing walkthrough:
+Open the visual walkthrough:
 
-```bash
-python3 -m http.server 8000
-```
-
-Then visit `http://localhost:8000/docs/`.
+- Web page: https://chaoyue0307.github.io/egocentric-action-baselines/
+- Local copy: open `docs/index.html` in a browser.
 
 The page explains the pipeline, key metrics, and ablation result with an
 interactive chart. A deeper glossary lives in `docs/concepts.md`.
