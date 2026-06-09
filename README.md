@@ -14,8 +14,8 @@ Open the visual walkthrough:
 - Web page: https://chaoyue0307.github.io/egocentric-action-baselines/
 - Local copy: open `docs/index.html` in a browser.
 
-The page includes a learning path, metric selector, ablation chart, and result
-interpretation cards. A deeper glossary lives in `docs/concepts.md`.
+The page includes a learning path, metric selector, ablation chart, visual
+concept explanations, and result interpretation cards.
 
 ## What You Will Learn
 
