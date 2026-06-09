@@ -14,6 +14,7 @@ hand-joint motion, and early sensor fusion each contribute to that prediction.
 
 ![Egocentric action baseline tutorial preview](docs/assets/readme_preview.svg)
 ![Animated action demo loop](docs/assets/demo_loop.svg)
+![Live tutorial screenshot](docs/assets/live_screenshot.png)
 
 ## Interactive Tutorial
 

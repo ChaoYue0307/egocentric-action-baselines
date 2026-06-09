@@ -100,6 +100,7 @@ def test_majority_baseline_predictions() -> None:
 
 
 def test_model_types_and_aggregate() -> None:
+    assert model_types_for("classical") == ["majority", "softmax"]
     assert model_types_for("all") == ["majority", "softmax", "mlp"]
     aggregate = aggregate_summaries([
         {"experiments": {"rgb_only": {"accuracy": 0.5, "macro_f1": 0.4}}},

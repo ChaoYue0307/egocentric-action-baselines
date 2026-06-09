@@ -1,22 +1,22 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="760" height="360" viewBox="0 0 760 360">
   <rect width="760" height="360" rx="28" fill="#020617"/>
   <text x="48" y="48" fill="#f8fafc" font-size="26" font-weight="700" font-family="Inter, Arial">Action Baseline Macro F1</text>
-  <text x="48" y="76" fill="#94a3b8" font-size="15" font-family="Inter, Arial">Sample: 120 windows · split: chronological · target: action</text>
+  <text x="48" y="76" fill="#94a3b8" font-size="15" font-family="Inter, Arial">Sample: 240 windows · split: chronological · target: action</text>
   
     <text x="78" y="96" fill="#cbd5e1" font-size="15" font-family="Inter, Arial">RGB only</text>
     <rect x="78" y="104" width="360" height="18" rx="9" fill="#0f172a" stroke="#334155"/>
-    <rect x="78" y="104" width="296" height="18" rx="9" fill="#38bdf8"/>
-    <text x="454" y="119" fill="#e2e8f0" font-size="15" font-family="Inter, Arial">0.824</text>
+    <rect x="78" y="104" width="25" height="18" rx="9" fill="#38bdf8"/>
+    <text x="454" y="119" fill="#e2e8f0" font-size="15" font-family="Inter, Arial">0.069</text>
     
     <text x="78" y="162" fill="#cbd5e1" font-size="15" font-family="Inter, Arial">Hand joints only</text>
     <rect x="78" y="170" width="360" height="18" rx="9" fill="#0f172a" stroke="#334155"/>
-    <rect x="78" y="170" width="102" height="18" rx="9" fill="#a78bfa"/>
-    <text x="454" y="185" fill="#e2e8f0" font-size="15" font-family="Inter, Arial">0.286</text>
+    <rect x="78" y="170" width="25" height="18" rx="9" fill="#a78bfa"/>
+    <text x="454" y="185" fill="#e2e8f0" font-size="15" font-family="Inter, Arial">0.071</text>
     
     <text x="78" y="228" fill="#cbd5e1" font-size="15" font-family="Inter, Arial">RGB + hand fusion</text>
     <rect x="78" y="236" width="360" height="18" rx="9" fill="#0f172a" stroke="#334155"/>
-    <rect x="78" y="236" width="45" height="18" rx="9" fill="#34d399"/>
-    <text x="454" y="251" fill="#e2e8f0" font-size="15" font-family="Inter, Arial">0.125</text>
+    <rect x="78" y="236" width="25" height="18" rx="9" fill="#34d399"/>
+    <text x="454" y="251" fill="#e2e8f0" font-size="15" font-family="Inter, Arial">0.071</text>
     
   <text x="48" y="326" fill="#64748b" font-size="13" font-family="Inter, Arial">Macro F1 weights each action class equally.</text>
 </svg>

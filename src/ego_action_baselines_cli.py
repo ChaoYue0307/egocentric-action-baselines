@@ -19,7 +19,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--test-fraction", type=float, default=0.25)
     parser.add_argument("--split-strategy", choices=["chronological", "stratified"], default="chronological", help="Use chronological to reduce overlap leakage; use stratified for quick class-balanced checks.")
     parser.add_argument("--max-windows", type=int, default=240, help="Limit windows for quick local runs. Use 0 for all windows.")
-    parser.add_argument("--model", choices=["majority", "softmax", "mlp", "both", "all"], default="softmax", help="Classifier head to run. MLP requires PyTorch.")
+    parser.add_argument("--model", choices=["majority", "softmax", "mlp", "classical", "both", "all"], default="softmax", help="Classifier head to run. MLP requires PyTorch.")
     parser.add_argument("--mlp-hidden-dim", type=int, default=128, help="Hidden width for the optional PyTorch MLP baseline.")
     parser.add_argument("--epochs", type=int, default=500)
     parser.add_argument("--learning-rate", type=float, default=0.15)
@@ -31,6 +31,8 @@ def parse_args() -> argparse.Namespace:
 def model_types_for(name: str) -> list[str]:
     if name == "both":
         return ["softmax", "mlp"]
+    if name == "classical":
+        return ["majority", "softmax"]
     if name == "all":
         return ["majority", "softmax", "mlp"]
     return [name]
