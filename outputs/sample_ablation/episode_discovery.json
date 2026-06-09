@@ -1,0 +1,11 @@
+{
+  "num_episodes": 1,
+  "episodes": [
+    {
+      "path": "../data/sample/xperience-10m-sample",
+      "annotation": "../data/sample/xperience-10m-sample/annotation.hdf5",
+      "video": "../data/sample/xperience-10m-sample/fisheye_cam0.mp4"
+    }
+  ],
+  "note": "The public Xperience-10M sample distribution currently exposes one sample episode; full multi-episode data is gated."
+}

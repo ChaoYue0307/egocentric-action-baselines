@@ -7,6 +7,7 @@ outputs/*
 !outputs/sample_ablation/
 outputs/sample_ablation/*
 !outputs/sample_ablation/summary.json
+!outputs/sample_ablation/episode_discovery.json
 data/
 *.hdf5
 *.mp4

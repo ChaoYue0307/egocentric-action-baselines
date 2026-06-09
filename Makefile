@@ -1,6 +1,6 @@
 PYTHON ?= python3
 
-.PHONY: test help visuals sample pages
+.PHONY: test help visuals sample discover pages
 
 test:
 	$(PYTHON) -m pytest -q
@@ -13,6 +13,9 @@ visuals:
 
 sample:
 	$(PYTHON) scripts/run_ablation.py --data-root ../data/sample/xperience-10m-sample --output-dir outputs/sample_ablation --split-strategy chronological --model classical
+
+discover:
+	$(PYTHON) scripts/discover_xperience_samples.py --search-root ../data
 
 pages:
 	@echo "https://chaoyue0307.github.io/egocentric-action-baselines/"

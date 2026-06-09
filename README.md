@@ -16,6 +16,8 @@ hand-joint motion, and early sensor fusion each contribute to that prediction.
 ![Animated action demo loop](docs/assets/demo_loop.svg)
 ![Live tutorial screenshot](docs/assets/live_screenshot.png)
 
+Short walkthrough recording: [`docs/assets/walkthrough.webm`](docs/assets/walkthrough.webm)
+
 ## Interactive Tutorial
 
 Open the visual walkthrough:
@@ -83,6 +85,7 @@ ego-action-ablation --data-root "$DATA_ROOT" --model both --epochs 300
 To run a stronger multi-episode check when you have more samples:
 
 ```bash
+python scripts/discover_xperience_samples.py --search-root ../data
 ego-action-ablation \
   --data-roots /path/to/sample_a /path/to/sample_b \
   --model all \
