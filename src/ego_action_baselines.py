@@ -241,6 +241,58 @@ def train_softmax(X: np.ndarray, y: np.ndarray, train_idx: np.ndarray, n_classes
     return W, b, history
 
 
+def train_torch_mlp(
+    X: np.ndarray,
+    y: np.ndarray,
+    train_idx: np.ndarray,
+    test_idx: np.ndarray,
+    n_classes: int,
+    epochs: int,
+    lr: float,
+    l2: float,
+    seed: int,
+    hidden_dim: int,
+) -> tuple[np.ndarray, list[dict], object]:
+    try:
+        import torch
+    except ImportError as exc:
+        raise ImportError("PyTorch is required for --model mlp. Install with: pip install -e '.[mlp]'") from exc
+
+    torch.manual_seed(seed)
+    X_train = torch.as_tensor(X[train_idx], dtype=torch.float32)
+    y_train = torch.as_tensor(y[train_idx], dtype=torch.long)
+    X_test = torch.as_tensor(X[test_idx], dtype=torch.float32)
+    counts = np.bincount(y[train_idx], minlength=n_classes).astype(np.float32)
+    weights = len(train_idx) / np.maximum(counts, 1.0) / max(n_classes, 1)
+    model = torch.nn.Sequential(
+        torch.nn.Linear(X.shape[1], hidden_dim),
+        torch.nn.ReLU(),
+        torch.nn.Dropout(0.15),
+        torch.nn.Linear(hidden_dim, n_classes),
+    )
+    loss_fn = torch.nn.CrossEntropyLoss(weight=torch.as_tensor(weights, dtype=torch.float32))
+    optimizer = torch.optim.AdamW(model.parameters(), lr=lr, weight_decay=l2)
+    history = []
+    for epoch in range(1, epochs + 1):
+        model.train()
+        optimizer.zero_grad()
+        logits = model(X_train)
+        loss = loss_fn(logits, y_train)
+        loss.backward()
+        optimizer.step()
+        if epoch == 1 or epoch == epochs:
+            pred = logits.detach().argmax(dim=1)
+            history.append({
+                "epoch": epoch,
+                "train_accuracy": float((pred == y_train).float().mean().item()),
+                "train_loss": float(loss.detach().item()),
+            })
+    model.eval()
+    with torch.no_grad():
+        probs = torch.softmax(model(X_test), dim=1).cpu().numpy()
+    return probs.astype(np.float32), history, model
+
+
 def compute_metrics(y_true: np.ndarray, y_pred: np.ndarray, class_names: list[str]) -> tuple[dict, list[dict], np.ndarray]:
     cm = np.zeros((len(class_names), len(class_names)), dtype=np.int64)
     for t, p in zip(y_true, y_pred):
@@ -277,14 +329,21 @@ def write_csv(path: Path, rows: list[dict], fieldnames: list[str]) -> None:
         writer.writerows(rows)
 
 
-def run_experiment(name: str, X: np.ndarray, y: np.ndarray, class_names: list[str], windows: list[WindowSample], out_dir: Path, args) -> dict:
+def run_experiment(name: str, X: np.ndarray, y: np.ndarray, class_names: list[str], windows: list[WindowSample], out_dir: Path, args, model_type: str = "softmax") -> dict:
     train_idx, test_idx = make_split(y, args.test_fraction, args.seed, args.split_strategy)
     Xs, mean, std = fit_scaler(X, train_idx)
-    W, b, history = train_softmax(Xs, y, train_idx, len(class_names), args.epochs, args.learning_rate, args.l2, args.seed)
-    probs = softmax(Xs[test_idx] @ W + b)
+    if model_type == "softmax":
+        W, b, history = train_softmax(Xs, y, train_idx, len(class_names), args.epochs, args.learning_rate, args.l2, args.seed)
+        probs = softmax(Xs[test_idx] @ W + b)
+        model_payload = {"mean": mean, "std": std, "W": W, "b": b}
+    elif model_type == "mlp":
+        probs, history, model = train_torch_mlp(Xs, y, train_idx, test_idx, len(class_names), args.epochs, args.learning_rate, args.l2, args.seed, args.mlp_hidden_dim)
+        model_payload = {"mean": mean, "std": std, "torch_model": model}
+    else:
+        raise ValueError(f"Unknown model type: {model_type}")
     pred = probs.argmax(axis=1)
     metrics, per_class, cm = compute_metrics(y[test_idx], pred, class_names)
-    metrics.update({"experiment": name, "feature_dim": int(X.shape[1]), "num_windows": int(len(y)), "num_train": int(len(train_idx)), "num_test": int(len(test_idx)), "split_strategy": args.split_strategy})
+    metrics.update({"experiment": name, "model": model_type, "feature_dim": int(X.shape[1]), "num_windows": int(len(y)), "num_train": int(len(train_idx)), "num_test": int(len(test_idx)), "split_strategy": args.split_strategy})
     exp_dir = out_dir / name
     exp_dir.mkdir(parents=True, exist_ok=True)
     (exp_dir / "metrics.json").write_text(json.dumps(metrics, indent=2), encoding="utf-8")
@@ -308,7 +367,18 @@ def run_experiment(name: str, X: np.ndarray, y: np.ndarray, class_names: list[st
             "correct": int(pred[k] == y[idx]),
         })
     write_csv(exp_dir / "predictions.csv", pred_rows, ["window_index", "start_frame", "end_frame", "true_label", "predicted_label", "confidence", "correct"])
-    np.savez_compressed(exp_dir / "model.npz", mean=mean, std=std, W=W, b=b, class_names=np.asarray(class_names, dtype=object))
+    if model_type == "softmax":
+        np.savez_compressed(exp_dir / "model.npz", **model_payload, class_names=np.asarray(class_names, dtype=object))
+    else:
+        import torch
+
+        torch.save({
+            "state_dict": model_payload["torch_model"].state_dict(),
+            "mean": model_payload["mean"],
+            "std": model_payload["std"],
+            "class_names": class_names,
+            "hidden_dim": args.mlp_hidden_dim,
+        }, exp_dir / "model.pt")
     return metrics
 
 

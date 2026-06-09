@@ -12,6 +12,8 @@ The task is simple to state: given a short temporal window from an egocentric
 video, predict what action is happening. The repo shows how RGB appearance,
 hand-joint motion, and early sensor fusion each contribute to that prediction.
 
+![Egocentric action baseline tutorial preview](docs/assets/readme_preview.svg)
+
 ## Interactive Tutorial
 
 Open the visual walkthrough:
@@ -62,6 +64,20 @@ Use `--max-windows 0` to run all labeled windows.
 The default `chronological` split keeps the last portion of the timeline for
 evaluation, which reduces leakage from overlapping windows.
 
+After installing the project, the same command is available as:
+
+```bash
+pip install -e .
+ego-action-ablation --data-root "$DATA_ROOT" --output-dir outputs/sample_ablation
+```
+
+To compare the NumPy softmax head with the optional PyTorch MLP head:
+
+```bash
+pip install -e ".[mlp]"
+ego-action-ablation --data-root "$DATA_ROOT" --model both --epochs 300
+```
+
 ## Repository Map
 
 | Path | Purpose |
@@ -88,6 +104,7 @@ make pages
 | `rgb_only` | sampled frames from `fisheye_cam0.mp4` | Can appearance and scene layout identify the action? |
 | `hand_joints_only` | left/right 3D hand joints from `annotation.hdf5` | Is hand motion enough to infer intent? |
 | `rgb_hand_fusion` | RGB + hand features | Does combining visual context with hand motion help? |
+| `*_mlp` | same features with a small PyTorch MLP head | Does a nonlinear classifier improve the chronological split? |
 
 Sample result from a short run:
 

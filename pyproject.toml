@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "egocentric-action-baselines"
+version = "0.1.0"
+description = "Small egocentric action recognition baselines for RGB, hand joints, and fusion features."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+  "numpy",
+  "h5py",
+  "opencv-python-headless",
+]
+
+[project.optional-dependencies]
+mlp = ["torch"]
+test = ["pytest"]
+
+[project.scripts]
+ego-action-ablation = "ego_action_baselines_cli:main"
+
+[tool.setuptools]
+py-modules = ["ego_action_baselines", "ego_action_baselines_cli"]
+
+[tool.setuptools.package-dir]
+"" = "src"

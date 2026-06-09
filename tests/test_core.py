@@ -14,7 +14,9 @@ from ego_action_baselines import (  # noqa: E402
     frame_labels_from_caption,
     majority_label,
     make_split,
+    run_experiment,
     softmax,
+    WindowSample,
 )
 
 
@@ -65,3 +67,16 @@ def test_compute_metrics_macro_f1() -> None:
     assert round(metrics["macro_f1"], 3) == 0.733
     assert rows[0]["class_name"] == "a"
     assert cm.tolist() == [[1, 1], [0, 2]]
+
+
+def test_run_experiment_rejects_unknown_model(tmp_path: Path) -> None:
+    args = Namespace(test_fraction=0.5, seed=0, split_strategy="chronological", epochs=1, learning_rate=0.1, l2=0.0, mlp_hidden_dim=8)
+    windows = [WindowSample(0, 1, 0, "a", 1.0), WindowSample(1, 2, 1, "b", 1.0)]
+    X = np.asarray([[0.0, 1.0], [1.0, 0.0]], dtype=np.float32)
+    y = np.asarray([0, 1], dtype=np.int64)
+    try:
+        run_experiment("bad", X, y, ["a", "b"], windows, tmp_path, args, "unknown")
+    except ValueError as exc:
+        assert "Unknown model type" in str(exc)
+    else:
+        raise AssertionError("Expected ValueError")
