@@ -17,14 +17,26 @@
       --good: #34d399;
     }
     body { margin: 0; font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: radial-gradient(circle at top left, #172554, var(--bg) 46%); color: var(--text); }
+    a { color: inherit; text-decoration: none; }
     main { max-width: 1120px; margin: 0 auto; padding: 40px 20px 64px; }
     h1 { font-size: clamp(2.2rem, 6vw, 4.8rem); line-height: 0.95; margin: 0 0 18px; letter-spacing: -0.06em; }
     h2 { margin-top: 0; letter-spacing: -0.03em; }
     p { color: var(--muted); line-height: 1.65; }
+    .topbar { position: sticky; top: 0; z-index: 5; backdrop-filter: blur(18px); background: rgba(15, 23, 42, .72); border-bottom: 1px solid rgba(148, 163, 184, .16); }
+    .topbar-inner { max-width: 1120px; margin: 0 auto; display: flex; justify-content: space-between; gap: 16px; align-items: center; padding: 12px 20px; }
+    .topbar strong { letter-spacing: -.02em; }
+    .nav-links { display: flex; gap: 10px; flex-wrap: wrap; }
+    .nav-links a, .hero-actions a { border: 1px solid var(--line); border-radius: 999px; padding: 8px 12px; color: var(--muted); font-size: .9rem; }
+    .nav-links a:hover, .hero-actions a:hover { border-color: var(--accent); color: var(--text); }
     .hero { display: grid; grid-template-columns: 1.4fr 0.9fr; gap: 22px; align-items: stretch; margin-bottom: 24px; }
     .card { background: color-mix(in srgb, var(--panel) 88%, transparent); border: 1px solid var(--line); border-radius: 24px; padding: 24px; box-shadow: 0 18px 80px rgba(0,0,0,.24); }
+    .hero-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 20px; }
+    .hero-actions a.primary { background: linear-gradient(135deg, var(--accent), var(--accent2)); color: #020617; border: 0; font-weight: 700; }
     .pill { display: inline-flex; gap: 8px; align-items: center; padding: 8px 12px; border: 1px solid var(--line); border-radius: 999px; color: var(--muted); font-size: 0.88rem; }
     .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin: 20px 0; }
+    .learning { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin: 20px 0; }
+    .mini { background: #0b1220; border: 1px solid var(--line); border-radius: 18px; padding: 16px; }
+    .mini b { display: block; color: var(--text); margin-bottom: 8px; }
     .step { cursor: pointer; transition: transform .18s ease, border-color .18s ease; }
     .step:hover, .step.active { transform: translateY(-3px); border-color: var(--accent); }
     .step strong { display: block; color: var(--text); margin-bottom: 8px; }
@@ -36,18 +48,36 @@
     .tabs { display: flex; flex-wrap: wrap; gap: 10px; margin: 18px 0; }
     button { border: 1px solid var(--line); background: #0b1220; color: var(--text); padding: 10px 14px; border-radius: 12px; cursor: pointer; }
     button.active { border-color: var(--accent); background: #123052; }
+    .matrix { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px; }
+    .cell { background: #0b1220; border: 1px solid var(--line); border-radius: 18px; padding: 18px; }
+    .cell strong { color: var(--good); font-size: 1.7rem; display: block; }
     pre { overflow: auto; padding: 16px; border-radius: 16px; background: #020617; border: 1px solid var(--line); color: #bfdbfe; }
     .footer { margin-top: 24px; color: var(--muted); font-size: .95rem; }
-    @media (max-width: 820px) { .hero, .grid { grid-template-columns: 1fr; } .bar-row { grid-template-columns: 1fr; } }
+    @media (max-width: 820px) { .hero, .grid, .learning, .matrix { grid-template-columns: 1fr; } .bar-row { grid-template-columns: 1fr; } .topbar-inner { align-items: flex-start; flex-direction: column; } }
   </style>
 </head>
 <body>
+<header class="topbar">
+  <div class="topbar-inner">
+    <strong>Egocentric Action Baselines</strong>
+    <nav class="nav-links">
+      <a href="#learn">Learn</a>
+      <a href="#baselines">Baselines</a>
+      <a href="#metrics">Metrics</a>
+      <a href="https://github.com/ChaoYue0307/egocentric-action-baselines">GitHub</a>
+    </nav>
+  </div>
+</header>
 <main>
   <section class="hero">
     <div class="card">
       <span class="pill">First-person video · action recognition · ablation</span>
       <h1>How does a model read an egocentric action?</h1>
       <p>Start with a coffee-making episode. Slice it into short windows. Turn video frames and hand joints into features. Train three baselines and compare what each signal contributes.</p>
+      <div class="hero-actions">
+        <a class="primary" href="#metrics">Explore the result</a>
+        <a href="https://github.com/ChaoYue0307/egocentric-action-baselines/blob/main/docs/concepts.md">Read concepts</a>
+      </div>
     </div>
     <div class="card">
       <h2>Sample Run</h2>
@@ -56,7 +86,17 @@
     </div>
   </section>
 
-  <section class="grid">
+  <section class="card" id="learn">
+    <h2>Learning Path</h2>
+    <div class="learning">
+      <div class="mini"><b>1. Window</b><p>Group nearby frames so the model can see motion and task progress.</p></div>
+      <div class="mini"><b>2. Feature</b><p>Convert RGB frames and hand joints into compact numeric vectors.</p></div>
+      <div class="mini"><b>3. Classifier</b><p>Train a softmax model that maps each window to an action label.</p></div>
+      <div class="mini"><b>4. Evaluate</b><p>Compare accuracy and F1 to understand strengths and failure modes.</p></div>
+    </div>
+  </section>
+
+  <section class="grid" id="baselines">
     <div class="card step active" data-step="rgb"><strong>1. RGB baseline</strong><p>Uses appearance: color, texture, coarse layout, and changes across sampled frames.</p></div>
     <div class="card step" data-step="hand"><strong>2. Hand baseline</strong><p>Uses 3D hand-joint motion, which is often a strong cue for intent.</p></div>
     <div class="card step" data-step="fusion"><strong>3. Fusion baseline</strong><p>Concatenates visual context with hand motion before classification.</p></div>
@@ -67,7 +107,7 @@
     <p id="stepText">RGB asks whether the scene itself reveals the action. For pour-over coffee, kettle position and dripper context can be highly informative.</p>
   </section>
 
-  <section class="card">
+  <section class="card" id="metrics">
     <h2>Ablation Result</h2>
     <div class="tabs">
       <button class="active" data-metric="accuracy">Accuracy</button>
@@ -80,6 +120,15 @@
   <section class="card">
     <h2>Key Terms In One Minute</h2>
     <pre id="termBox">Accuracy: the fraction of windows classified correctly.</pre>
+  </section>
+
+  <section class="card">
+    <h2>What The Sample Teaches</h2>
+    <div class="matrix">
+      <div class="cell"><strong>1.000</strong><p>RGB accuracy on this short run. Scene layout is highly predictive in this episode.</p></div>
+      <div class="cell"><strong>0.907</strong><p>Hand-only macro F1. Hand motion is useful but does not fully replace visual context.</p></div>
+    </div>
+    <p>Because the sample is one episode, treat the result as a clear pipeline demonstration. For a benchmark, add more episodes and split by held-out episode.</p>
   </section>
 
   <p class="footer">Read the full glossary in <code>docs/concepts.md</code>. Run the experiment with <code>scripts/run_ablation.py</code>.</p>

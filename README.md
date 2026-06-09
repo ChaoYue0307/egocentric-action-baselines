@@ -14,8 +14,8 @@ Open the visual walkthrough:
 - Web page: https://chaoyue0307.github.io/egocentric-action-baselines/
 - Local copy: open `docs/index.html` in a browser.
 
-The page explains the pipeline, key metrics, and ablation result with an
-interactive chart. A deeper glossary lives in `docs/concepts.md`.
+The page includes a learning path, metric selector, ablation chart, and result
+interpretation cards. A deeper glossary lives in `docs/concepts.md`.
 
 ## What You Will Learn
 
@@ -53,6 +53,16 @@ python scripts/run_ablation.py \
 ```
 
 Use `--max-windows 0` to run all labeled windows.
+
+## Repository Map
+
+| Path | Purpose |
+| --- | --- |
+| `scripts/run_ablation.py` | command-line entry point for RGB, hand, and fusion experiments |
+| `src/ego_action_baselines.py` | dataset loading, feature extraction, training, and metrics |
+| `docs/index.html` | interactive tutorial webpage |
+| `docs/concepts.md` | glossary for CV/ML terms |
+| `outputs/sample_ablation/summary.json` | compact example result |
 
 ## Baselines
 
