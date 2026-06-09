@@ -1,4 +1,4 @@
-data_root: /Users/chaoyue/Library/CloudStorage/Dropbox/Ropedia/data/sample/xperience-10m-sample
+data_root: /path/to/xperience-10m-sample
 video: fisheye_cam0.mp4
 target: action
 window_frames: 20

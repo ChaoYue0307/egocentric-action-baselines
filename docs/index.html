@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Egocentric Action Baselines Tutorial</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg: #0f172a;
+      --panel: #111c33;
+      --text: #e5e7eb;
+      --muted: #a7b0c0;
+      --line: #263450;
+      --accent: #38bdf8;
+      --accent2: #a78bfa;
+      --good: #34d399;
+    }
+    body { margin: 0; font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: radial-gradient(circle at top left, #172554, var(--bg) 46%); color: var(--text); }
+    main { max-width: 1120px; margin: 0 auto; padding: 40px 20px 64px; }
+    h1 { font-size: clamp(2.2rem, 6vw, 4.8rem); line-height: 0.95; margin: 0 0 18px; letter-spacing: -0.06em; }
+    h2 { margin-top: 0; letter-spacing: -0.03em; }
+    p { color: var(--muted); line-height: 1.65; }
+    .hero { display: grid; grid-template-columns: 1.4fr 0.9fr; gap: 22px; align-items: stretch; margin-bottom: 24px; }
+    .card { background: color-mix(in srgb, var(--panel) 88%, transparent); border: 1px solid var(--line); border-radius: 24px; padding: 24px; box-shadow: 0 18px 80px rgba(0,0,0,.24); }
+    .pill { display: inline-flex; gap: 8px; align-items: center; padding: 8px 12px; border: 1px solid var(--line); border-radius: 999px; color: var(--muted); font-size: 0.88rem; }
+    .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin: 20px 0; }
+    .step { cursor: pointer; transition: transform .18s ease, border-color .18s ease; }
+    .step:hover, .step.active { transform: translateY(-3px); border-color: var(--accent); }
+    .step strong { display: block; color: var(--text); margin-bottom: 8px; }
+    .chart { display: grid; gap: 14px; margin-top: 12px; }
+    .bar-row { display: grid; grid-template-columns: 150px 1fr 64px; gap: 12px; align-items: center; }
+    .bar-track { height: 16px; background: #0b1220; border-radius: 999px; overflow: hidden; border: 1px solid var(--line); }
+    .bar { height: 100%; border-radius: 999px; background: linear-gradient(90deg, var(--accent), var(--accent2)); }
+    .metric { font-variant-numeric: tabular-nums; color: var(--good); }
+    .tabs { display: flex; flex-wrap: wrap; gap: 10px; margin: 18px 0; }
+    button { border: 1px solid var(--line); background: #0b1220; color: var(--text); padding: 10px 14px; border-radius: 12px; cursor: pointer; }
+    button.active { border-color: var(--accent); background: #123052; }
+    pre { overflow: auto; padding: 16px; border-radius: 16px; background: #020617; border: 1px solid var(--line); color: #bfdbfe; }
+    .footer { margin-top: 24px; color: var(--muted); font-size: .95rem; }
+    @media (max-width: 820px) { .hero, .grid { grid-template-columns: 1fr; } .bar-row { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+<main>
+  <section class="hero">
+    <div class="card">
+      <span class="pill">First-person video · action recognition · ablation</span>
+      <h1>How does a model read an egocentric action?</h1>
+      <p>Start with a coffee-making episode. Slice it into short windows. Turn video frames and hand joints into features. Train three baselines and compare what each signal contributes.</p>
+    </div>
+    <div class="card">
+      <h2>Sample Run</h2>
+      <p><strong>120</strong> windows · <strong>2</strong> action classes · <strong>30</strong> evaluation windows</p>
+      <p>The numbers below check the pipeline on one episode. They are not a multi-episode benchmark.</p>
+    </div>
+  </section>
+
+  <section class="grid">
+    <div class="card step active" data-step="rgb"><strong>1. RGB baseline</strong><p>Uses appearance: color, texture, coarse layout, and changes across sampled frames.</p></div>
+    <div class="card step" data-step="hand"><strong>2. Hand baseline</strong><p>Uses 3D hand-joint motion, which is often a strong cue for intent.</p></div>
+    <div class="card step" data-step="fusion"><strong>3. Fusion baseline</strong><p>Concatenates visual context with hand motion before classification.</p></div>
+  </section>
+
+  <section class="card">
+    <h2 id="stepTitle">RGB baseline</h2>
+    <p id="stepText">RGB asks whether the scene itself reveals the action. For pour-over coffee, kettle position and dripper context can be highly informative.</p>
+  </section>
+
+  <section class="card">
+    <h2>Ablation Result</h2>
+    <div class="tabs">
+      <button class="active" data-metric="accuracy">Accuracy</button>
+      <button data-metric="macro_f1">Macro F1</button>
+      <button data-metric="weighted_f1">Weighted F1</button>
+    </div>
+    <div class="chart" id="chart"></div>
+  </section>
+
+  <section class="card">
+    <h2>Key Terms In One Minute</h2>
+    <pre id="termBox">Accuracy: the fraction of windows classified correctly.</pre>
+  </section>
+
+  <p class="footer">Read the full glossary in <code>docs/concepts.md</code>. Run the experiment with <code>scripts/run_ablation.py</code>.</p>
+</main>
+<script>
+const results = {
+  rgb_only: { label: "RGB only", accuracy: 1.0, macro_f1: 1.0, weighted_f1: 1.0 },
+  hand_joints_only: { label: "Hand joints only", accuracy: 0.9333, macro_f1: 0.9068, weighted_f1: 0.9366 },
+  rgb_hand_fusion: { label: "RGB + hand fusion", accuracy: 0.9333, macro_f1: 0.9068, weighted_f1: 0.9366 }
+};
+const stepCopy = {
+  rgb: ["RGB baseline", "RGB asks whether the scene itself reveals the action. For pour-over coffee, kettle position and dripper context can be highly informative."],
+  hand: ["Hand-joint baseline", "Hand joints test whether motion alone is enough. Reaching, grasping, lifting, and placing are often visible in the 3D trajectory."],
+  fusion: ["Fusion baseline", "Fusion combines visual context with hand motion. Fusion helps most when each modality explains something the other misses."]
+};
+const terms = {
+  accuracy: "Accuracy: the fraction of windows classified correctly. Easy to read, but sensitive to class imbalance.",
+  macro_f1: "Macro F1: computes F1 per class and averages them equally. Useful when rare actions matter.",
+  weighted_f1: "Weighted F1: averages per-class F1 by class frequency. Useful for summarizing overall behavior on imbalanced data."
+};
+function renderChart(metric) {
+  const chart = document.getElementById("chart");
+  chart.innerHTML = "";
+  Object.values(results).forEach(row => {
+    const value = row[metric];
+    chart.insertAdjacentHTML("beforeend", `
+      <div class="bar-row">
+        <strong>${row.label}</strong>
+        <div class="bar-track"><div class="bar" style="width:${Math.round(value * 100)}%"></div></div>
+        <span class="metric">${value.toFixed(3)}</span>
+      </div>`);
+  });
+  document.getElementById("termBox").textContent = terms[metric];
+}
+document.querySelectorAll(".step").forEach(card => {
+  card.addEventListener("click", () => {
+    document.querySelectorAll(".step").forEach(x => x.classList.remove("active"));
+    card.classList.add("active");
+    const copy = stepCopy[card.dataset.step];
+    document.getElementById("stepTitle").textContent = copy[0];
+    document.getElementById("stepText").textContent = copy[1];
+  });
+});
+document.querySelectorAll("button[data-metric]").forEach(button => {
+  button.addEventListener("click", () => {
+    document.querySelectorAll("button[data-metric]").forEach(x => x.classList.remove("active"));
+    button.classList.add("active");
+    renderChart(button.dataset.metric);
+  });
+});
+renderChart("accuracy");
+</script>
+</body>
+</html>

@@ -23,7 +23,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--stride-frames", type=int, default=5)
     parser.add_argument("--min-label-fraction", type=float, default=0.6)
     parser.add_argument("--test-fraction", type=float, default=0.25)
-    parser.add_argument("--max-windows", type=int, default=240, help="Limit windows for quick local smoke tests. Use 0 for all windows.")
+    parser.add_argument("--max-windows", type=int, default=240, help="Limit windows for quick local runs. Use 0 for all windows.")
     parser.add_argument("--epochs", type=int, default=500)
     parser.add_argument("--learning-rate", type=float, default=0.15)
     parser.add_argument("--l2", type=float, default=1e-3)
