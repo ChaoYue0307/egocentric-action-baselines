@@ -16,6 +16,7 @@ dependencies = [
 
 [project.optional-dependencies]
 mlp = ["torch"]
+dino = ["torch", "torchvision"]
 test = ["pytest"]
 dev = ["pytest", "ruff"]
 

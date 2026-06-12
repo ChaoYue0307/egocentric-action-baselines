@@ -10,6 +10,9 @@ import cv2
 import h5py
 import numpy as np
 
+IMAGENET_MEAN = np.asarray([0.485, 0.456, 0.406], dtype=np.float32)
+IMAGENET_STD = np.asarray([0.229, 0.224, 0.225], dtype=np.float32)
+
 
 @dataclass
 class WindowSample:
@@ -134,7 +137,30 @@ def rgb_frame_feature(frame: np.ndarray, grid_size: int = 8, hist_bins: int = 8)
     return np.concatenate([mean, std, *hists, grid, edge]).astype(np.float32)
 
 
-def rgb_features(video_path: Path, windows: list[WindowSample]) -> np.ndarray:
+def make_dino_embedder(model_name: str = "dinov2_vits14"):
+    """Frozen DINOv2 frame embedder. Downloads hub weights on first use."""
+    try:
+        import torch
+    except ImportError as exc:
+        raise ImportError("PyTorch is required for --rgb-embedding dino. Install with: pip install -e '.[dino]'") from exc
+
+    model = torch.hub.load("facebookresearch/dinov2", model_name)
+    model.eval()
+
+    def embed(frame: np.ndarray) -> np.ndarray:
+        small = cv2.resize(frame, (224, 224), interpolation=cv2.INTER_AREA)
+        rgb = cv2.cvtColor(small, cv2.COLOR_BGR2RGB).astype(np.float32) / 255.0
+        rgb = (rgb - IMAGENET_MEAN) / IMAGENET_STD
+        tensor = torch.from_numpy(np.ascontiguousarray(rgb.transpose(2, 0, 1)))[None]
+        with torch.no_grad():
+            feat = model(tensor)
+        return np.asarray(feat[0], dtype=np.float32)
+
+    return embed
+
+
+def rgb_features(video_path: Path, windows: list[WindowSample], frame_feature_fn=None) -> np.ndarray:
+    frame_feature_fn = frame_feature_fn or rgb_frame_feature
     cap = cv2.VideoCapture(str(video_path))
     if not cap.isOpened():
         raise RuntimeError(f"Could not open video: {video_path}")
@@ -150,7 +176,7 @@ def rgb_features(video_path: Path, windows: list[WindowSample]) -> np.ndarray:
             if not ok:
                 break
             if current in wanted:
-                feature_by_idx[current] = rgb_frame_feature(frame)
+                feature_by_idx[current] = frame_feature_fn(frame)
                 wanted.remove(current)
             current += 1
         missing = sorted(wanted)
@@ -199,12 +225,106 @@ def chronological_split(y: np.ndarray, test_fraction: float) -> tuple[np.ndarray
     return np.arange(split, dtype=np.int64), np.arange(split, n, dtype=np.int64)
 
 
-def make_split(y: np.ndarray, test_fraction: float, seed: int, strategy: str) -> tuple[np.ndarray, np.ndarray]:
+def label_run_groups(windows: list[WindowSample]) -> np.ndarray:
+    """Group windows into contiguous same-label runs, approximating action instances."""
+    groups = np.zeros(len(windows), dtype=np.int64)
+    gid = 0
+    for i, window in enumerate(windows):
+        if i and window.label != windows[i - 1].label:
+            gid += 1
+        groups[i] = gid
+    return groups
+
+
+def grouped_segment_split(windows: list[WindowSample], y: np.ndarray, test_fraction: float, seed: int) -> tuple[np.ndarray, np.ndarray]:
+    """Hold out whole action instances so every test class keeps train support.
+
+    Classes with a single instance stay fully in train; at least one instance per
+    class always remains in train.
+    """
+    groups = label_run_groups(windows)
+    rng = np.random.default_rng(seed)
+    test: list[int] = []
+    for cls in np.unique(y):
+        cls_idx = np.flatnonzero(y == cls)
+        cls_groups = np.unique(groups[cls_idx])
+        if len(cls_groups) < 2:
+            continue
+        shuffled = cls_groups.copy()
+        rng.shuffle(shuffled)
+        target = max(1, int(round(len(cls_idx) * test_fraction)))
+        picked: list[int] = []
+        count = 0
+        for group in shuffled:
+            if count >= target or len(picked) >= len(cls_groups) - 1:
+                break
+            members = np.flatnonzero(groups == group)
+            picked.append(int(group))
+            count += len(members)
+        test.extend(np.flatnonzero(np.isin(groups, picked)).tolist())
+    test_set = sorted(set(test))
+    if not test_set:
+        raise ValueError(
+            "grouped-segment needs at least one class with two or more action instances, "
+            "but every class in this data occurs as a single instance. Use blocked-instance "
+            "for within-episode evaluation, or pass more episodes via --data-roots."
+        )
+    train = np.asarray([i for i in range(len(y)) if i not in set(test_set)], dtype=np.int64)
+    return train, np.asarray(test_set, dtype=np.int64)
+
+
+def blocked_instance_split(windows: list[WindowSample], y: np.ndarray, test_fraction: float) -> tuple[np.ndarray, np.ndarray]:
+    """Hold out the chronological tail of each action instance.
+
+    Measures within-instance generalization: every test class keeps train
+    support, and combined with overlap purging no frame is shared between train
+    and test. Classes whose train support would be fully purged stay in train.
+    """
+    groups = label_run_groups(windows)
+    test: list[int] = []
+    for group in np.unique(groups):
+        members = np.flatnonzero(groups == group)
+        if len(members) < 2:
+            continue
+        n_test = min(max(1, int(round(len(members) * test_fraction))), len(members) - 1)
+        test.extend(int(i) for i in members[-n_test:])
+    test_set = set(test)
+    train = np.asarray([i for i in range(len(y)) if i not in test_set], dtype=np.int64)
+    test_idx = np.asarray(sorted(test_set), dtype=np.int64)
+    purged_train = window_overlap_purge(windows, train, test_idx)
+    supported = set(y[purged_train].tolist())
+    moved_back = [int(i) for i in test_idx if int(y[i]) not in supported]
+    if moved_back:
+        test_idx = np.asarray([int(i) for i in test_idx if int(i) not in set(moved_back)], dtype=np.int64)
+        train = np.asarray(sorted(set(train.tolist()) | set(moved_back)), dtype=np.int64)
+    return train, test_idx
+
+
+def window_overlap_purge(windows: list[WindowSample], train_idx: np.ndarray, test_idx: np.ndarray) -> np.ndarray:
+    """Drop train windows that share frames with any test window."""
+    test_ranges = [(windows[int(i)].start, windows[int(i)].end) for i in test_idx]
+    keep = []
+    for i in train_idx:
+        window = windows[int(i)]
+        if all(window.end <= start or window.start >= end for start, end in test_ranges):
+            keep.append(int(i))
+    return np.asarray(keep, dtype=np.int64)
+
+
+def make_split(windows: list[WindowSample], y: np.ndarray, test_fraction: float, seed: int, strategy: str, purge_overlap: bool = True) -> tuple[np.ndarray, np.ndarray]:
     if strategy == "chronological":
-        return chronological_split(y, test_fraction)
-    if strategy == "stratified":
+        train_idx, test_idx = chronological_split(y, test_fraction)
+    elif strategy == "blocked-instance":
+        train_idx, test_idx = blocked_instance_split(windows, y, test_fraction)
+    elif strategy == "grouped-segment":
+        train_idx, test_idx = grouped_segment_split(windows, y, test_fraction, seed)
+    elif strategy == "stratified":
         return stratified_split(y, test_fraction, seed)
-    raise ValueError(f"Unknown split strategy: {strategy}")
+    else:
+        raise ValueError(f"Unknown split strategy: {strategy}")
+    if purge_overlap:
+        train_idx = window_overlap_purge(windows, train_idx, test_idx)
+    return train_idx, test_idx
 
 
 def fit_scaler(X: np.ndarray, train_idx: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
@@ -332,6 +452,30 @@ def compute_metrics(y_true: np.ndarray, y_pred: np.ndarray, class_names: list[st
     }, rows, cm
 
 
+def calibration_report(probs: np.ndarray, y_true: np.ndarray, n_bins: int = 10) -> dict:
+    """Reliability bins and expected calibration error for argmax confidence."""
+    if len(y_true) == 0:
+        return {"num_bins": n_bins, "ece": 0.0, "bins": []}
+    pred = probs.argmax(axis=1)
+    confidence = probs[np.arange(len(pred)), pred]
+    correct = (pred == y_true).astype(np.float64)
+    edges = np.linspace(0.0, 1.0, n_bins + 1)
+    bins = []
+    ece = 0.0
+    for i in range(n_bins):
+        low, high = float(edges[i]), float(edges[i + 1])
+        mask = (confidence >= low) & (confidence < high) if i < n_bins - 1 else (confidence >= low) & (confidence <= high)
+        count = int(mask.sum())
+        if count:
+            mean_conf = float(confidence[mask].mean())
+            accuracy = float(correct[mask].mean())
+            ece += (count / len(y_true)) * abs(accuracy - mean_conf)
+        else:
+            mean_conf, accuracy = 0.0, 0.0
+        bins.append({"bin_low": low, "bin_high": high, "count": count, "mean_confidence": mean_conf, "accuracy": accuracy})
+    return {"num_bins": n_bins, "ece": float(ece), "bins": bins}
+
+
 def write_csv(path: Path, rows: list[dict], fieldnames: list[str]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", newline="", encoding="utf-8") as fp:
@@ -340,28 +484,36 @@ def write_csv(path: Path, rows: list[dict], fieldnames: list[str]) -> None:
         writer.writerows(rows)
 
 
-def run_experiment(name: str, X: np.ndarray, y: np.ndarray, class_names: list[str], windows: list[WindowSample], out_dir: Path, args, model_type: str = "softmax") -> dict:
-    train_idx, test_idx = make_split(y, args.test_fraction, args.seed, args.split_strategy)
-    Xs, mean, std = fit_scaler(X, train_idx)
-    if model_type == "majority":
-        probs, history = predict_majority(y, train_idx, test_idx, len(class_names))
-        model_payload = {"mean": mean, "std": std, "majority": np.asarray([int(np.argmax(np.bincount(y[train_idx], minlength=len(class_names))))], dtype=np.int64)}
-    elif model_type == "softmax":
-        W, b, history = train_softmax(Xs, y, train_idx, len(class_names), args.epochs, args.learning_rate, args.l2, args.seed)
-        probs = softmax(Xs[test_idx] @ W + b)
-        model_payload = {"mean": mean, "std": std, "W": W, "b": b}
-    elif model_type == "mlp":
-        probs, history, model = train_torch_mlp(Xs, y, train_idx, test_idx, len(class_names), args.epochs, args.learning_rate, args.l2, args.seed, args.mlp_hidden_dim)
-        model_payload = {"mean": mean, "std": std, "torch_model": model}
-    else:
-        raise ValueError(f"Unknown model type: {model_type}")
+def evaluate_predictions(
+    name: str,
+    probs: np.ndarray,
+    y: np.ndarray,
+    test_idx: np.ndarray,
+    class_names: list[str],
+    windows: list[WindowSample],
+    out_dir: Path | None,
+    *,
+    model_label: str,
+    split_strategy: str,
+    history: list[dict] | None = None,
+    extra: dict | None = None,
+) -> dict:
     pred = probs.argmax(axis=1)
-    metrics, per_class, cm = compute_metrics(y[test_idx], pred, class_names)
-    metrics.update({"experiment": name, "model": model_type, "feature_dim": int(X.shape[1]), "num_windows": int(len(y)), "num_train": int(len(train_idx)), "num_test": int(len(test_idx)), "split_strategy": args.split_strategy})
+    y_true = y[test_idx]
+    metrics, per_class, cm = compute_metrics(y_true, pred, class_names)
+    calibration = calibration_report(probs, y_true)
+    metrics["ece"] = calibration["ece"]
+    metrics.update({"experiment": name, "model": model_label, "split_strategy": split_strategy})
+    if extra:
+        metrics.update(extra)
+    if out_dir is None:
+        return metrics
     exp_dir = out_dir / name
     exp_dir.mkdir(parents=True, exist_ok=True)
     (exp_dir / "metrics.json").write_text(json.dumps(metrics, indent=2), encoding="utf-8")
-    (exp_dir / "history.json").write_text(json.dumps(history, indent=2), encoding="utf-8")
+    if history is not None:
+        (exp_dir / "history.json").write_text(json.dumps(history, indent=2), encoding="utf-8")
+    (exp_dir / "calibration.json").write_text(json.dumps(calibration, indent=2), encoding="utf-8")
     write_csv(exp_dir / "per_class_metrics.csv", per_class, ["class_id", "class_name", "support", "predicted", "precision", "recall", "f1"])
     with (exp_dir / "confusion_matrix.csv").open("w", newline="", encoding="utf-8") as fp:
         writer = csv.writer(fp)
@@ -381,22 +533,74 @@ def run_experiment(name: str, X: np.ndarray, y: np.ndarray, class_names: list[st
             "correct": int(pred[k] == y[idx]),
         })
     write_csv(exp_dir / "predictions.csv", pred_rows, ["window_index", "start_frame", "end_frame", "true_label", "predicted_label", "confidence", "correct"])
-    if model_type in ("softmax", "majority"):
-        np.savez_compressed(exp_dir / "model.npz", **model_payload, class_names=np.asarray(class_names, dtype=object))
-    else:
-        import torch
-
-        torch.save({
-            "state_dict": model_payload["torch_model"].state_dict(),
-            "mean": model_payload["mean"],
-            "std": model_payload["std"],
-            "class_names": class_names,
-            "hidden_dim": args.mlp_hidden_dim,
-        }, exp_dir / "model.pt")
     return metrics
 
 
-def build_dataset(data_root: Path, video_name: str, target: str, window_frames: int, stride_frames: int, min_label_fraction: float, max_windows: int | None):
+def run_experiment(
+    name: str,
+    X: np.ndarray,
+    y: np.ndarray,
+    class_names: list[str],
+    windows: list[WindowSample],
+    out_dir: Path | None,
+    args,
+    model_type: str = "softmax",
+    seed: int | None = None,
+) -> tuple[dict, np.ndarray, np.ndarray]:
+    seed = args.seed if seed is None else seed
+    purge_overlap = getattr(args, "purge_overlap", True)
+    train_idx, test_idx = make_split(windows, y, args.test_fraction, seed, args.split_strategy, purge_overlap)
+    Xs, mean, std = fit_scaler(X, train_idx)
+    if model_type == "majority":
+        probs, history = predict_majority(y, train_idx, test_idx, len(class_names))
+        model_payload = {"mean": mean, "std": std, "majority": np.asarray([int(np.argmax(np.bincount(y[train_idx], minlength=len(class_names))))], dtype=np.int64)}
+    elif model_type == "softmax":
+        W, b, history = train_softmax(Xs, y, train_idx, len(class_names), args.epochs, args.learning_rate, args.l2, seed)
+        probs = softmax(Xs[test_idx] @ W + b)
+        model_payload = {"mean": mean, "std": std, "W": W, "b": b}
+    elif model_type == "mlp":
+        probs, history, model = train_torch_mlp(Xs, y, train_idx, test_idx, len(class_names), args.epochs, args.learning_rate, args.l2, seed, args.mlp_hidden_dim)
+        model_payload = {"mean": mean, "std": std, "torch_model": model}
+    else:
+        raise ValueError(f"Unknown model type: {model_type}")
+    metrics = evaluate_predictions(
+        name,
+        probs,
+        y,
+        test_idx,
+        class_names,
+        windows,
+        out_dir,
+        model_label=model_type,
+        split_strategy=args.split_strategy,
+        history=history,
+        extra={
+            "feature_dim": int(X.shape[1]),
+            "num_windows": int(len(y)),
+            "num_train": int(len(train_idx)),
+            "num_test": int(len(test_idx)),
+            "purge_overlap": bool(purge_overlap),
+            "seed": int(seed),
+        },
+    )
+    if out_dir is not None:
+        exp_dir = out_dir / name
+        if model_type in ("softmax", "majority"):
+            np.savez_compressed(exp_dir / "model.npz", **model_payload, class_names=np.asarray(class_names, dtype=object))
+        else:
+            import torch
+
+            torch.save({
+                "state_dict": model_payload["torch_model"].state_dict(),
+                "mean": model_payload["mean"],
+                "std": model_payload["std"],
+                "class_names": class_names,
+                "hidden_dim": args.mlp_hidden_dim,
+            }, exp_dir / "model.pt")
+    return metrics, probs, test_idx
+
+
+def build_dataset(data_root: Path, video_name: str, target: str, window_frames: int, stride_frames: int, min_label_fraction: float, max_windows: int | None, rgb_embedding: str = "handcrafted"):
     annotation = data_root / "annotation.hdf5"
     caption = load_caption(annotation)
     frame_numbers = load_frame_numbers(annotation)
@@ -405,5 +609,6 @@ def build_dataset(data_root: Path, video_name: str, target: str, window_frames: 
     y, class_names = encode_labels([w.label for w in windows])
     left, right = load_hand_joints(annotation)
     X_hand = hand_features(left, right, windows)
-    X_rgb = rgb_features(data_root / video_name, windows)
+    frame_feature_fn = make_dino_embedder() if rgb_embedding == "dino" else None
+    X_rgb = rgb_features(data_root / video_name, windows, frame_feature_fn)
     return windows, y, class_names, X_rgb, X_hand

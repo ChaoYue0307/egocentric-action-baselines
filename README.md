@@ -34,9 +34,12 @@ concept explanations, and result interpretation cards.
 - **Temporal windows:** grouping nearby frames so the model sees motion, not only one image.
 - **RGB baseline:** using image color, texture, and coarse layout features.
 - **Hand-joint baseline:** using 3D hand pose and motion as an action cue.
-- **Fusion baseline:** concatenating RGB and hand features before classification.
+- **Early vs late fusion:** concatenating features before training versus averaging predictions after.
 - **Ablation study:** changing one input source at a time to see what matters.
 - **Accuracy and F1:** reading both overall correctness and class-balanced performance.
+- **Split design:** why the train/test split decides what your numbers mean.
+- **Leakage and label shift:** the two classic ways a single-episode evaluation lies to you.
+- **Calibration:** whether predicted confidence matches empirical accuracy (ECE).
 
 ## Data
 
@@ -60,13 +63,15 @@ pip install -r requirements.txt
 python scripts/run_ablation.py \
   --data-root "$DATA_ROOT" \
   --output-dir outputs/sample_ablation \
-  --split-strategy chronological \
-  --max-windows 240
+  --model classical \
+  --seeds 5 \
+  --max-windows 0
 ```
 
-Use `--max-windows 0` to run all labeled windows.
-The default `chronological` split keeps the last portion of the timeline for
-evaluation, which reduces leakage from overlapping windows.
+Use `--max-windows 0` to run all labeled windows (recommended: short prefixes
+of the episode contain each action only once, which starves some splits).
+The default `blocked-instance` split holds out the chronological tail of each
+action instance and purges train windows that share frames with test windows.
 
 After installing the project, the same command is available as:
 
@@ -120,27 +125,69 @@ make pages
 | --- | --- | --- |
 | `rgb_only` | sampled frames from `fisheye_cam0.mp4` | Can appearance and scene layout identify the action? |
 | `hand_joints_only` | left/right 3D hand joints from `annotation.hdf5` | Is hand motion enough to infer intent? |
-| `rgb_hand_fusion` | RGB + hand features | Does combining visual context with hand motion help? |
+| `rgb_hand_fusion` | RGB + hand features concatenated (early fusion) | Does combining features before training help? |
+| `rgb_hand_late_fusion` | average of RGB and hand prediction probabilities | Does combining predictions after training help more? |
 | `*_majority` | no visual or hand features | Does the classifier beat the class-prior baseline? |
-| `*_mlp` | same features with a small PyTorch MLP head | Does a nonlinear classifier improve the chronological split? |
+| `*_mlp` | same features with a small PyTorch MLP head | Does a nonlinear classifier change the ranking? |
 
-Sample result from a short run:
+Result on the full sample episode (1093 windows, 18 action classes,
+`blocked-instance` split, mean ± std over 5 seeds):
 
-| Experiment | Accuracy | Macro F1 | Feature Dim |
+| Experiment | Accuracy | Macro F1 | ECE |
 | --- | ---: | ---: | ---: |
-| `rgb_only` | 0.700 | 0.824 | 686 |
-| `hand_joints_only` | 0.167 | 0.286 | 882 |
-| `rgb_hand_fusion` | 0.067 | 0.125 | 1568 |
+| `*_majority` | 0.143 ± 0.000 | 0.015 ± 0.000 | 0.005 |
+| `rgb_only` | 0.254 ± 0.002 | 0.163 ± 0.003 | 0.469 |
+| `hand_joints_only` | **0.469 ± 0.002** | 0.267 ± 0.007 | 0.357 |
+| `rgb_hand_fusion` (early) | 0.358 ± 0.002 | **0.264 ± 0.005** | 0.464 |
+| `rgb_hand_late_fusion` | 0.335 ± 0.005 | 0.207 ± 0.015 | 0.302 |
 
 Each run writes `summary.json` plus per-experiment `metrics.json`,
-`per_class_metrics.csv`, `confusion_matrix.csv`, `predictions.csv`, and
-`model.npz`.
-Batch runs also write `aggregate_summary.json` with mean and standard deviation
-across episode roots.
+`per_class_metrics.csv`, `confusion_matrix.csv`, `predictions.csv`,
+`calibration.json` (reliability bins and ECE), and `model.npz`.
+With `--seeds N` the summary adds mean and standard deviation across seeds.
+Batch runs also write `aggregate_summary.json` across episode roots.
 
-## How To Read The Result
+## The Split Decides What The Numbers Mean
 
-High scores on one episode mean the feature extraction, label alignment, and
-evaluation loop are working. They do not prove cross-episode generalization.
+The same features and models produce wildly different numbers depending on the
+split, and each gap teaches a different evaluation failure
+(`outputs/split_comparison/` holds the committed summaries):
+
+| Split | `hand_joints_only` accuracy | What it measures |
+| --- | ---: | --- |
+| `stratified` | 0.941 | **Leakage.** Random windows overlap by up to 15 of 20 frames across train/test, so the model partly memorizes shared frames. A leaky upper bound. |
+| `chronological` | 0.004 | **Label shift.** Every action in this episode happens exactly once, so the timeline tail contains classes the model never trained on. Even the majority baseline scores 0.0. |
+| `blocked-instance` | 0.471 | **Within-instance generalization.** The tail of each action instance is held out and overlapping train windows are purged, so every test class has train support and no frame is shared. |
+| `grouped-segment` | n/a here | **Cross-instance generalization.** Holds out whole action instances; needs repeated instances or multiple episodes, so it refuses to run on this single-instance episode. |
+
+Three honest readings of the blocked-instance result:
+
+- **Hands beat pixels.** Hand-joint motion is the strongest single cue across
+  all 18 actions; handcrafted RGB summaries mostly capture scene layout, which
+  changes little within one kitchen.
+- **Fusion is not free.** Early fusion lands between its two inputs instead of
+  above them: the 882 hand dimensions and 686 RGB dimensions compete inside one
+  linear head, and the weaker RGB half drags down windows where hands already
+  sufficed. Late fusion is more calibrated (lower ECE) but averages away some
+  correct hand predictions. Making fusion actually help is the real research
+  exercise this repo hands you.
+- **Confidence lies.** ECE around 0.35–0.47 means predicted confidence runs far
+  ahead of empirical accuracy. Check `calibration.json` before trusting any
+  probability from a small model on a small dataset.
+
+High scores on one episode still do not prove cross-episode generalization.
 For a stronger benchmark, add many episodes and split by held-out episode so the
 test set contains unseen kitchens, camera motion, and action styles.
+
+## Optional: Frozen Pretrained Embeddings
+
+To swap the handcrafted RGB features for frozen DINOv2 embeddings
+(downloads hub weights on first use; never runs in CI):
+
+```bash
+pip install -e ".[dino]"
+ego-action-ablation --data-root "$DATA_ROOT" --rgb-embedding dino --model classical
+```
+
+This keeps the same softmax head and split, so any improvement is attributable
+to the representation — the cleanest way to feel what pretraining buys.

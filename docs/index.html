@@ -141,10 +141,10 @@
   <section class="card">
     <h2>What The Sample Teaches</h2>
     <div class="matrix">
-        <div class="cell"><strong>0.700</strong><p>RGB accuracy with chronological evaluation. Appearance still carries the strongest signal in this short run.</p></div>
-        <div class="cell"><strong>0.286</strong><p>Hand-only macro F1. Time-held-out windows reveal that hand motion alone is harder to generalize from one episode.</p></div>
+        <div class="cell"><strong>0.471</strong><p>Hand-joint accuracy on the blocked-instance split. Hand motion is the strongest single cue across all 18 actions of the full episode.</p></div>
+        <div class="cell"><strong>0.143</strong><p>Majority-class accuracy. Every learned baseline must beat this floor before any other comparison means anything.</p></div>
     </div>
-    <p>Because the sample is one episode, treat the result as a clear pipeline demonstration. For a benchmark, add more episodes and split by held-out episode.</p>
+    <p>The split strategy decides what the numbers mean: a leaky stratified split inflates every model above 0.93, while the honest blocked-instance split keeps train support for every test class without sharing frames. Because the sample is one episode, treat the result as a within-episode demonstration. For a benchmark, add more episodes and split by held-out episode.</p>
   </section>
 
   <section class="card" id="concepts">
@@ -188,10 +188,10 @@
     </div>
     <h3>Artifact Preview</h3>
     <pre>{
-  "split_strategy": "chronological",
+  "split_strategy": "blocked-instance",
   "experiments": {
-    "rgb_only": {"accuracy": 0.70, "macro_f1": 0.824},
-    "rgb_hand_fusion_mlp": {"model": "mlp"}
+    "hand_joints_only": {"accuracy": 0.471, "macro_f1": 0.259, "ece": 0.357},
+    "rgb_hand_late_fusion": {"model": "late_fusion_softmax"}
   }
 }</pre>
   </section>
@@ -200,9 +200,11 @@
 </main>
 <script>
 const results = {
-  rgb_only: { label: "RGB only", accuracy: 0.7, macro_f1: 0.8235, weighted_f1: 0.8235 },
-  hand_joints_only: { label: "Hand joints only", accuracy: 0.1667, macro_f1: 0.2857, weighted_f1: 0.2857 },
-  rgb_hand_fusion: { label: "RGB + hand fusion", accuracy: 0.0667, macro_f1: 0.125, weighted_f1: 0.125 }
+  majority: { label: "Majority baseline", accuracy: 0.1434, macro_f1: 0.0148, weighted_f1: 0.036 },
+  rgb_only: { label: "RGB only", accuracy: 0.2574, macro_f1: 0.162, weighted_f1: 0.2304 },
+  hand_joints_only: { label: "Hand joints only", accuracy: 0.4706, macro_f1: 0.2595, weighted_f1: 0.439 },
+  rgb_hand_fusion: { label: "RGB + hand early fusion", accuracy: 0.3566, macro_f1: 0.2619, weighted_f1: 0.3555 },
+  rgb_hand_late_fusion: { label: "RGB + hand late fusion", accuracy: 0.3272, macro_f1: 0.19, weighted_f1: 0.329 }
 };
 const stepCopy = {
   rgb: ["RGB baseline", "RGB asks whether the scene itself reveals the action. For pour-over coffee, kettle position and dripper context can be highly informative."],

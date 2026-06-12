@@ -71,4 +71,40 @@ the model is treating each action class fairly.
 
 Overlapping windows share many frames. If nearby windows are randomly split
 between train and test, the test set can look too similar to the training set.
+On this episode a stratified split inflates every baseline above 0.93 accuracy.
 For serious evaluation, split by time blocks or by held-out episodes.
+
+## Label Shift
+
+A split can be leak-free and still useless. The chronological tail split holds
+out the end of the episode — but every action here happens exactly once, so the
+tail contains classes the model never saw in training. Even the majority
+baseline scores 0.0. When the train and test label distributions disagree this
+badly, no model can look good, and the number measures the split rather than
+the model.
+
+## Blocked-Instance Split
+
+The within-episode compromise: hold out the chronological tail of each action
+instance, then purge any train window that shares frames with a test window.
+Every test class keeps train support (no label shift) and no frame appears on
+both sides (no leakage). It measures within-instance generalization — a weaker
+claim than cross-episode generalization, but an honest one.
+
+## Early vs Late Fusion
+
+Early fusion concatenates features before training one classifier. Late fusion
+trains one classifier per modality and averages their predicted probabilities.
+Early fusion can model cross-modal interactions but lets a weak modality drag
+down a strong one inside a single head; late fusion keeps modalities independent
+but cannot model their interactions. Neither automatically beats the best
+single modality — making fusion help is a research problem, not a default.
+
+## Calibration and ECE
+
+A model is calibrated when predictions made with confidence p are correct about
+p of the time. Expected calibration error (ECE) bins predictions by confidence
+and averages the gap between confidence and accuracy. Small models on small
+data are usually overconfident — here ECE reaches 0.47, meaning confidence
+overstates accuracy by almost half. Check `calibration.json` before trusting
+any probability downstream.

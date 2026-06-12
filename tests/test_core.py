@@ -11,16 +11,21 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 from adapters import XperienceActionAdapter  # noqa: E402
 from ego_action_baselines import (  # noqa: E402
     WindowSample,
+    blocked_instance_split,
+    calibration_report,
     chronological_split,
     compute_metrics,
+    encode_labels,
     frame_labels_from_caption,
+    grouped_segment_split,
     majority_label,
     make_split,
     predict_majority,
     run_experiment,
     softmax,
+    window_overlap_purge,
 )
-from ego_action_baselines_cli import aggregate_summaries, model_types_for  # noqa: E402
+from ego_action_baselines_cli import aggregate_summaries, model_types_for, run_seed_pass  # noqa: E402
 
 
 def test_majority_label_respects_fraction() -> None:
@@ -50,12 +55,71 @@ def test_chronological_split_keeps_tail_for_eval() -> None:
 
 
 def test_make_split_rejects_unknown_strategy() -> None:
+    windows = [WindowSample(i, i + 1, i, "a", 1.0) for i in range(4)]
     try:
-        make_split(np.arange(4), 0.25, 0, "unknown")
+        make_split(windows, np.arange(4), 0.25, 0, "unknown")
     except ValueError as exc:
         assert "Unknown split strategy" in str(exc)
     else:
         raise AssertionError("Expected ValueError")
+
+
+def test_grouped_segment_split_keeps_train_support_for_test_classes() -> None:
+    labels = ["a"] * 4 + ["b"] * 4 + ["a"] * 4 + ["b"] * 4
+    windows = [WindowSample(i * 4, i * 4 + 4, i * 4 + 1, label, 1.0) for i, label in enumerate(labels)]
+    y, _ = encode_labels([w.label for w in windows])
+    train, test = grouped_segment_split(windows, y, 0.25, 0)
+    assert len(test) > 0
+    assert set(y[test].tolist()) <= set(y[train].tolist())
+    assert len(set(train.tolist()) & set(test.tolist())) == 0
+
+
+def test_grouped_segment_split_raises_on_single_instances() -> None:
+    labels = ["a"] * 4 + ["b"] * 4
+    windows = [WindowSample(i * 4, i * 4 + 4, i * 4 + 1, label, 1.0) for i, label in enumerate(labels)]
+    y, _ = encode_labels([w.label for w in windows])
+    try:
+        grouped_segment_split(windows, y, 0.25, 0)
+    except ValueError as exc:
+        assert "blocked-instance" in str(exc)
+    else:
+        raise AssertionError("Expected ValueError")
+
+
+def test_blocked_instance_split_holds_out_instance_tails() -> None:
+    labels = ["a"] * 8 + ["b"] * 8
+    windows = [WindowSample(i * 4, i * 4 + 4, i * 4 + 1, label, 1.0) for i, label in enumerate(labels)]
+    y, _ = encode_labels([w.label for w in windows])
+    train, test = blocked_instance_split(windows, y, 0.25)
+    assert test.tolist() == [6, 7, 14, 15]
+    assert set(y[test].tolist()) <= set(y[train].tolist())
+
+
+def test_window_overlap_purge_drops_shared_frames() -> None:
+    windows = [WindowSample(0, 20, 9, "a", 1.0), WindowSample(10, 30, 19, "a", 1.0), WindowSample(40, 60, 49, "b", 1.0)]
+    kept = window_overlap_purge(windows, np.asarray([0, 2]), np.asarray([1]))
+    assert kept.tolist() == [2]
+
+
+def test_calibration_report_expected_calibration_error() -> None:
+    probs = np.asarray([[0.9, 0.1], [0.8, 0.2]], dtype=np.float32)
+    report = calibration_report(probs, np.asarray([0, 1]), n_bins=10)
+    assert round(report["ece"], 2) == 0.45
+    assert sum(b["count"] for b in report["bins"]) == 2
+
+
+def test_late_fusion_averages_probabilities(tmp_path: Path) -> None:
+    args = Namespace(test_fraction=0.5, seed=0, split_strategy="stratified", purge_overlap=False, epochs=5, learning_rate=0.1, l2=0.0, mlp_hidden_dim=8, model="softmax")
+    labels = ["a" if i % 2 == 0 else "b" for i in range(8)]
+    windows = [WindowSample(i * 10, i * 10 + 10, i * 10 + 5, label, 1.0) for i, label in enumerate(labels)]
+    y, class_names = encode_labels([w.label for w in windows])
+    X = np.random.default_rng(0).normal(size=(8, 4)).astype(np.float32)
+    datasets = {"rgb_only": X, "hand_joints_only": X.copy(), "rgb_hand_fusion": np.concatenate([X, X], axis=1).astype(np.float32)}
+    results = run_seed_pass(args, datasets, y, class_names, windows, tmp_path, 0)
+    assert "rgb_hand_late_fusion" in results
+    expected = (results["rgb_only"]["probs"] + results["hand_joints_only"]["probs"]) / 2.0
+    assert np.allclose(results["rgb_hand_late_fusion"]["probs"], expected)
+    assert (tmp_path / "rgb_hand_late_fusion" / "calibration.json").exists()
 
 
 def test_softmax_rows_sum_to_one() -> None:

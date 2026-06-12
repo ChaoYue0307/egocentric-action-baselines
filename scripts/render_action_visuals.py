@@ -20,21 +20,26 @@ def render(summary_path: Path, output_path: Path) -> None:
     summary = json.loads(summary_path.read_text(encoding="utf-8"))
     experiments = summary["experiments"]
     rows = [
+        ("Majority baseline", experiments.get("rgb_only_majority"), "#64748b"),
         ("RGB only", experiments["rgb_only"], "#38bdf8"),
         ("Hand joints only", experiments["hand_joints_only"], "#a78bfa"),
-        ("RGB + hand fusion", experiments["rgb_hand_fusion"], "#34d399"),
+        ("RGB + hand early fusion", experiments["rgb_hand_fusion"], "#34d399"),
+        ("RGB + hand late fusion", experiments.get("rgb_hand_late_fusion"), "#fbbf24"),
     ]
     parts = []
     y = 104
     for label, metrics, color in rows:
+        if metrics is None:
+            continue
         parts.append(bar(78, y, 360, label, float(metrics["macro_f1"]), color))
         y += 66
-    svg = f"""<svg xmlns="http://www.w3.org/2000/svg" width="760" height="360" viewBox="0 0 760 360">
-  <rect width="760" height="360" rx="28" fill="#020617"/>
+    height = y + 60
+    svg = f"""<svg xmlns="http://www.w3.org/2000/svg" width="760" height="{height}" viewBox="0 0 760 {height}">
+  <rect width="760" height="{height}" rx="28" fill="#020617"/>
   <text x="48" y="48" fill="#f8fafc" font-size="26" font-weight="700" font-family="Inter, Arial">Action Baseline Macro F1</text>
   <text x="48" y="76" fill="#94a3b8" font-size="15" font-family="Inter, Arial">Sample: {summary['num_windows']} windows · split: {summary.get('split_strategy', 'stratified')} · target: {summary['target']}</text>
   {''.join(parts)}
-  <text x="48" y="326" fill="#64748b" font-size="13" font-family="Inter, Arial">Macro F1 weights each action class equally.</text>
+  <text x="48" y="{height - 24}" fill="#64748b" font-size="13" font-family="Inter, Arial">Macro F1 weights each action class equally.</text>
 </svg>
 """
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -47,7 +52,7 @@ def render_confusion_matrix(csv_path: Path, output_path: Path) -> None:
             rows = list(csv.reader(fp))
         labels = rows[0][1:]
         matrix = [[int(x) for x in row[1:]] for row in rows[1:]]
-        subtitle = "Generated from outputs/sample_ablation/rgb_only/confusion_matrix.csv"
+        subtitle = f"Generated from {csv_path}"
     else:
         labels = ["action 0", "action 1"]
         matrix = [[21, 0], [9, 0]]
@@ -85,7 +90,7 @@ def render_confusion_matrix(csv_path: Path, output_path: Path) -> None:
 
 def main() -> int:
     render(Path("outputs/sample_ablation/summary.json"), Path("docs/assets/action_metrics.svg"))
-    render_confusion_matrix(Path("outputs/sample_ablation/rgb_only/confusion_matrix.csv"), Path("docs/assets/confusion_matrix.svg"))
+    render_confusion_matrix(Path("outputs/sample_ablation/hand_joints_only/confusion_matrix.csv"), Path("docs/assets/confusion_matrix.svg"))
     return 0
 
 

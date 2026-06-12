@@ -8,6 +8,14 @@ outputs/*
 outputs/sample_ablation/*
 !outputs/sample_ablation/summary.json
 !outputs/sample_ablation/episode_discovery.json
+!outputs/split_comparison/
+outputs/split_comparison/*
+!outputs/split_comparison/chronological/
+outputs/split_comparison/chronological/*
+!outputs/split_comparison/chronological/summary.json
+!outputs/split_comparison/stratified/
+outputs/split_comparison/stratified/*
+!outputs/split_comparison/stratified/summary.json
 data/
 *.hdf5
 *.mp4
