@@ -8,6 +8,9 @@ outputs/*
 outputs/sample_ablation/*
 !outputs/sample_ablation/summary.json
 !outputs/sample_ablation/episode_discovery.json
+!outputs/dino_ablation/
+outputs/dino_ablation/*
+!outputs/dino_ablation/summary.json
 !outputs/split_comparison/
 outputs/split_comparison/*
 !outputs/split_comparison/chronological/

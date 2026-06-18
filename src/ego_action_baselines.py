@@ -413,6 +413,103 @@ def train_torch_mlp(
     return probs.astype(np.float32), history, model
 
 
+def train_gated_fusion(
+    X_rgb: np.ndarray,
+    X_hand: np.ndarray,
+    y: np.ndarray,
+    train_idx: np.ndarray,
+    test_idx: np.ndarray,
+    n_classes: int,
+    epochs: int,
+    lr: float,
+    l2: float,
+    seed: int,
+) -> tuple[np.ndarray, list[dict]]:
+    """Learned per-window gate between an RGB expert and a hand expert.
+
+    Each modality has its own linear classifier; a gate network reads both
+    feature blocks and emits a scalar weight g per window, so the combined
+    logits are g * rgb_logits + (1 - g) * hand_logits. Unlike fixed early or
+    late fusion, the model can down-weight the weaker modality window by window.
+
+    A naive gate overfits to one expert on training data and collapses (it will
+    drive g to 0 or 1 and generalize worse than either modality alone). Two
+    standard mixture-of-experts regularizers keep it honest: auxiliary direct
+    supervision of each expert, and an entropy bonus that discourages saturated
+    gates. The history records the mean RGB gate so you can see what it learned.
+    """
+    try:
+        import torch
+    except ImportError as exc:
+        raise ImportError("PyTorch is required for gated fusion. Install with: pip install -e '.[mlp]'") from exc
+
+    Xr, _, _ = fit_scaler(X_rgb, train_idx)
+    Xh, _, _ = fit_scaler(X_hand, train_idx)
+    torch.manual_seed(seed)
+    rgb_tr = torch.as_tensor(Xr[train_idx], dtype=torch.float32)
+    hand_tr = torch.as_tensor(Xh[train_idx], dtype=torch.float32)
+    y_tr = torch.as_tensor(y[train_idx], dtype=torch.long)
+    rgb_te = torch.as_tensor(Xr[test_idx], dtype=torch.float32)
+    hand_te = torch.as_tensor(Xh[test_idx], dtype=torch.float32)
+    counts = np.bincount(y[train_idx], minlength=n_classes).astype(np.float32)
+    weights = len(train_idx) / np.maximum(counts, 1.0) / max(n_classes, 1)
+
+    rgb_expert = torch.nn.Linear(Xr.shape[1], n_classes)
+    hand_expert = torch.nn.Linear(Xh.shape[1], n_classes)
+    gate = torch.nn.Sequential(
+        torch.nn.Linear(Xr.shape[1] + Xh.shape[1], 64),
+        torch.nn.ReLU(),
+        torch.nn.Dropout(0.15),
+        torch.nn.Linear(64, 1),
+    )
+    params = list(rgb_expert.parameters()) + list(hand_expert.parameters()) + list(gate.parameters())
+    loss_fn = torch.nn.CrossEntropyLoss(weight=torch.as_tensor(weights, dtype=torch.float32))
+    # The gate saturates and collapses under the softmax learning rate (0.15);
+    # full-batch AdamW needs a much smaller step to keep the gate soft.
+    gate_lr = min(lr, 5e-3)
+    optimizer = torch.optim.AdamW(params, lr=gate_lr, weight_decay=l2)
+
+    def forward(rgb, hand):
+        rgb_logits = rgb_expert(rgb)
+        hand_logits = hand_expert(hand)
+        g = torch.sigmoid(gate(torch.cat([rgb, hand], dim=1)))
+        logits = g * rgb_logits + (1.0 - g) * hand_logits
+        return logits, g, rgb_logits, hand_logits
+
+    aux_weight, entropy_weight = 0.3, 0.05
+    def set_mode(training: bool):
+        for module in (rgb_expert, hand_expert, gate):
+            module.train(training)
+
+    history = []
+    for epoch in range(1, epochs + 1):
+        set_mode(True)
+        optimizer.zero_grad()
+        logits, g, rgb_logits, hand_logits = forward(rgb_tr, hand_tr)
+        gate_entropy = -(g * torch.log(g + 1e-6) + (1 - g) * torch.log(1 - g + 1e-6)).mean()
+        loss = (
+            loss_fn(logits, y_tr)
+            + aux_weight * (loss_fn(rgb_logits, y_tr) + loss_fn(hand_logits, y_tr))
+            - entropy_weight * gate_entropy
+        )
+        loss.backward()
+        optimizer.step()
+        if epoch == 1 or epoch == epochs:
+            pred = logits.detach().argmax(dim=1)
+            history.append({
+                "epoch": epoch,
+                "train_accuracy": float((pred == y_tr).float().mean().item()),
+                "train_loss": float(loss.detach().item()),
+                "mean_rgb_gate": float(g.detach().mean().item()),
+            })
+    set_mode(False)
+    with torch.no_grad():
+        logits, g, _, _ = forward(rgb_te, hand_te)
+        probs = torch.softmax(logits, dim=1).cpu().numpy()
+    history.append({"test_mean_rgb_gate": float(g.detach().mean().item())})
+    return probs.astype(np.float32), history
+
+
 def predict_majority(y: np.ndarray, train_idx: np.ndarray, test_idx: np.ndarray, n_classes: int) -> tuple[np.ndarray, list[dict]]:
     counts = np.bincount(y[train_idx], minlength=n_classes).astype(np.float32)
     majority = int(np.argmax(counts))
@@ -450,6 +547,28 @@ def compute_metrics(y_true: np.ndarray, y_pred: np.ndarray, class_names: list[st
         "num_eval": int(len(y_true)),
         "num_classes": len(class_names),
     }, rows, cm
+
+
+def top_confusions(cm: np.ndarray, class_names: list[str], k: int = 8) -> list[dict]:
+    """Most frequent off-diagonal (true -> predicted) confusions, with directionality.
+
+    Surfaces which action classes the model mixes up; on a single-kitchen episode
+    these are usually verbs that share an object (the kettle verbs here).
+    """
+    rows = []
+    for i in range(len(class_names)):
+        support = int(cm[i].sum())
+        for j in range(len(class_names)):
+            if i == j or cm[i, j] == 0:
+                continue
+            rows.append({
+                "true": class_names[i],
+                "predicted": class_names[j],
+                "count": int(cm[i, j]),
+                "fraction_of_true": round(cm[i, j] / support, 4) if support else 0.0,
+            })
+    rows.sort(key=lambda row: (row["count"], row["fraction_of_true"]), reverse=True)
+    return rows[:k]
 
 
 def calibration_report(probs: np.ndarray, y_true: np.ndarray, n_bins: int = 10) -> dict:
@@ -502,7 +621,9 @@ def evaluate_predictions(
     y_true = y[test_idx]
     metrics, per_class, cm = compute_metrics(y_true, pred, class_names)
     calibration = calibration_report(probs, y_true)
+    confusions = top_confusions(cm, class_names)
     metrics["ece"] = calibration["ece"]
+    metrics["top_confusions"] = confusions[:3]
     metrics.update({"experiment": name, "model": model_label, "split_strategy": split_strategy})
     if extra:
         metrics.update(extra)
@@ -533,6 +654,8 @@ def evaluate_predictions(
             "correct": int(pred[k] == y[idx]),
         })
     write_csv(exp_dir / "predictions.csv", pred_rows, ["window_index", "start_frame", "end_frame", "true_label", "predicted_label", "confidence", "correct"])
+    if confusions:
+        write_csv(exp_dir / "top_confusions.csv", confusions, ["true", "predicted", "count", "fraction_of_true"])
     return metrics
 
 

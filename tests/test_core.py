@@ -5,6 +5,7 @@ from pathlib import Path
 import sys
 
 import numpy as np
+import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
@@ -23,6 +24,8 @@ from ego_action_baselines import (  # noqa: E402
     predict_majority,
     run_experiment,
     softmax,
+    top_confusions,
+    train_gated_fusion,
     window_overlap_purge,
 )
 from ego_action_baselines_cli import aggregate_summaries, model_types_for, run_seed_pass  # noqa: E402
@@ -99,6 +102,30 @@ def test_window_overlap_purge_drops_shared_frames() -> None:
     windows = [WindowSample(0, 20, 9, "a", 1.0), WindowSample(10, 30, 19, "a", 1.0), WindowSample(40, 60, 49, "b", 1.0)]
     kept = window_overlap_purge(windows, np.asarray([0, 2]), np.asarray([1]))
     assert kept.tolist() == [2]
+
+
+def test_top_confusions_ranks_off_diagonal() -> None:
+    cm = np.asarray([[5, 3, 0], [1, 6, 0], [0, 4, 2]], dtype=np.int64)
+    rows = top_confusions(cm, ["a", "b", "c"], k=2)
+    assert rows[0] == {"true": "c", "predicted": "b", "count": 4, "fraction_of_true": round(4 / 6, 4)}
+    assert rows[1]["count"] == 3
+    assert all(r["true"] != r["predicted"] for r in rows)
+
+
+def test_gated_fusion_trains_and_keeps_gate_soft() -> None:
+    pytest.importorskip("torch")
+    rng = np.random.default_rng(0)
+    n, nc = 40, 3
+    y = np.tile(np.arange(nc), n // nc + 1)[:n].astype(np.int64)
+    X_rgb = rng.normal(size=(n, 6)).astype(np.float32) + y[:, None]
+    X_hand = rng.normal(size=(n, 5)).astype(np.float32) + y[:, None]
+    train_idx = np.arange(0, n, 2)
+    test_idx = np.arange(1, n, 2)
+    probs, history = train_gated_fusion(X_rgb, X_hand, y, train_idx, test_idx, nc, epochs=40, lr=5e-3, l2=1e-3, seed=0)
+    assert probs.shape == (len(test_idx), nc)
+    assert np.allclose(probs.sum(axis=1), 1.0, atol=1e-5)
+    gate = history[-1]["test_mean_rgb_gate"]
+    assert 0.05 < gate < 0.95
 
 
 def test_calibration_report_expected_calibration_error() -> None:

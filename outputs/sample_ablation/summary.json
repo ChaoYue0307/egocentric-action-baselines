@@ -36,6 +36,26 @@
       "num_eval": 272,
       "num_classes": 18,
       "ece": 0.004669609315255119,
+      "top_confusions": [
+        {
+          "true": "Pour coffee",
+          "predicted": "Hold gooseneck kettle",
+          "count": 39,
+          "fraction_of_true": 1.0
+        },
+        {
+          "true": "Position kettle to pour",
+          "predicted": "Hold gooseneck kettle",
+          "count": 31,
+          "fraction_of_true": 1.0
+        },
+        {
+          "true": "Lift gooseneck kettle",
+          "predicted": "Hold gooseneck kettle",
+          "count": 23,
+          "fraction_of_true": 1.0
+        }
+      ],
       "experiment": "rgb_only_majority",
       "model": "majority",
       "split_strategy": "blocked-instance",
@@ -54,6 +74,26 @@
       "num_eval": 272,
       "num_classes": 18,
       "ece": 0.4690824827069745,
+      "top_confusions": [
+        {
+          "true": "Lift gooseneck kettle",
+          "predicted": "Move kettle away",
+          "count": 20,
+          "fraction_of_true": 0.8696
+        },
+        {
+          "true": "Close bottle cap",
+          "predicted": "Place item on table",
+          "count": 20,
+          "fraction_of_true": 0.8696
+        },
+        {
+          "true": "Hold gooseneck kettle",
+          "predicted": "Grasp gooseneck kettle",
+          "count": 19,
+          "fraction_of_true": 0.4872
+        }
+      ],
       "experiment": "rgb_only",
       "model": "softmax",
       "split_strategy": "blocked-instance",
@@ -72,6 +112,26 @@
       "num_eval": 272,
       "num_classes": 18,
       "ece": 0.004669609315255119,
+      "top_confusions": [
+        {
+          "true": "Pour coffee",
+          "predicted": "Hold gooseneck kettle",
+          "count": 39,
+          "fraction_of_true": 1.0
+        },
+        {
+          "true": "Position kettle to pour",
+          "predicted": "Hold gooseneck kettle",
+          "count": 31,
+          "fraction_of_true": 1.0
+        },
+        {
+          "true": "Lift gooseneck kettle",
+          "predicted": "Hold gooseneck kettle",
+          "count": 23,
+          "fraction_of_true": 1.0
+        }
+      ],
       "experiment": "hand_joints_only_majority",
       "model": "majority",
       "split_strategy": "blocked-instance",
@@ -90,6 +150,26 @@
       "num_eval": 272,
       "num_classes": 18,
       "ece": 0.35719733389423175,
+      "top_confusions": [
+        {
+          "true": "Grasp coffee scoop",
+          "predicted": "Transfer coffee to dripper",
+          "count": 17,
+          "fraction_of_true": 1.0
+        },
+        {
+          "true": "Position kettle to pour",
+          "predicted": "Move kettle away",
+          "count": 16,
+          "fraction_of_true": 0.5161
+        },
+        {
+          "true": "Hold gooseneck kettle",
+          "predicted": "Grasp gooseneck kettle",
+          "count": 12,
+          "fraction_of_true": 0.3077
+        }
+      ],
       "experiment": "hand_joints_only",
       "model": "softmax",
       "split_strategy": "blocked-instance",
@@ -108,6 +188,26 @@
       "num_eval": 272,
       "num_classes": 18,
       "ece": 0.004669609315255119,
+      "top_confusions": [
+        {
+          "true": "Pour coffee",
+          "predicted": "Hold gooseneck kettle",
+          "count": 39,
+          "fraction_of_true": 1.0
+        },
+        {
+          "true": "Position kettle to pour",
+          "predicted": "Hold gooseneck kettle",
+          "count": 31,
+          "fraction_of_true": 1.0
+        },
+        {
+          "true": "Lift gooseneck kettle",
+          "predicted": "Hold gooseneck kettle",
+          "count": 23,
+          "fraction_of_true": 1.0
+        }
+      ],
       "experiment": "rgb_hand_fusion_majority",
       "model": "majority",
       "split_strategy": "blocked-instance",
@@ -126,6 +226,26 @@
       "num_eval": 272,
       "num_classes": 18,
       "ece": 0.4641172174802598,
+      "top_confusions": [
+        {
+          "true": "Lift gooseneck kettle",
+          "predicted": "Move kettle away",
+          "count": 19,
+          "fraction_of_true": 0.8261
+        },
+        {
+          "true": "Close bottle cap",
+          "predicted": "Place item on table",
+          "count": 19,
+          "fraction_of_true": 0.8261
+        },
+        {
+          "true": "Grasp coffee scoop",
+          "predicted": "Transfer coffee to dripper",
+          "count": 17,
+          "fraction_of_true": 1.0
+        }
+      ],
       "experiment": "rgb_hand_fusion",
       "model": "softmax",
       "split_strategy": "blocked-instance",
@@ -144,12 +264,68 @@
       "num_eval": 272,
       "num_classes": 18,
       "ece": 0.30177695271285143,
+      "top_confusions": [
+        {
+          "true": "Close bottle cap",
+          "predicted": "Place item on table",
+          "count": 19,
+          "fraction_of_true": 0.8261
+        },
+        {
+          "true": "Hold gooseneck kettle",
+          "predicted": "Grasp gooseneck kettle",
+          "count": 18,
+          "fraction_of_true": 0.4615
+        },
+        {
+          "true": "Grasp coffee scoop",
+          "predicted": "Transfer coffee to dripper",
+          "count": 17,
+          "fraction_of_true": 1.0
+        }
+      ],
       "experiment": "rgb_hand_late_fusion",
       "model": "late_fusion_softmax",
       "split_strategy": "blocked-instance",
       "num_test": 272,
       "purge_overlap": true,
       "seed": 7
+    },
+    "rgb_hand_gated_fusion": {
+      "accuracy": 0.3492647058823529,
+      "macro_f1": 0.2493641560857706,
+      "weighted_f1": 0.3504013838155583,
+      "balanced_accuracy": 0.23402914071913938,
+      "num_eval": 272,
+      "num_classes": 18,
+      "ece": 0.5123926110784798,
+      "top_confusions": [
+        {
+          "true": "Hold gooseneck kettle",
+          "predicted": "Grasp gooseneck kettle",
+          "count": 20,
+          "fraction_of_true": 0.5128
+        },
+        {
+          "true": "Lift gooseneck kettle",
+          "predicted": "Move kettle away",
+          "count": 19,
+          "fraction_of_true": 0.8261
+        },
+        {
+          "true": "Close bottle cap",
+          "predicted": "Place item on table",
+          "count": 18,
+          "fraction_of_true": 0.7826
+        }
+      ],
+      "experiment": "rgb_hand_gated_fusion",
+      "model": "gated_fusion",
+      "split_strategy": "blocked-instance",
+      "num_test": 272,
+      "purge_overlap": true,
+      "seed": 7,
+      "mean_rgb_gate": 0.5075857043266296
     }
   },
   "seed_variance": {
@@ -180,6 +356,13 @@
       "accuracy_std": 0.0,
       "macro_f1_mean": 0.014753168148288254,
       "macro_f1_std": 0.0
+    },
+    "rgb_hand_gated_fusion": {
+      "seeds": 5,
+      "accuracy_mean": 0.3551470588235294,
+      "accuracy_std": 0.006410145505206877,
+      "macro_f1_mean": 0.26226603688503075,
+      "macro_f1_std": 0.010132296897537358
     },
     "rgb_hand_late_fusion": {
       "seeds": 5,

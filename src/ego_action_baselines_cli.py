@@ -23,6 +23,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--model", choices=["majority", "softmax", "mlp", "classical", "both", "all"], default="softmax", help="Classifier head to run. MLP requires PyTorch.")
     parser.add_argument("--rgb-embedding", choices=["handcrafted", "dino"], default="handcrafted", help="RGB frame features: handcrafted color/edge stats or frozen DINOv2 embeddings (requires PyTorch).")
     parser.add_argument("--mlp-hidden-dim", type=int, default=128, help="Hidden width for the optional PyTorch MLP baseline.")
+    parser.add_argument("--gated-fusion", action="store_true", help="Also train a learned per-window gated fusion of RGB and hand experts (requires PyTorch).")
     parser.add_argument("--epochs", type=int, default=500)
     parser.add_argument("--learning-rate", type=float, default=0.15)
     parser.add_argument("--l2", type=float, default=1e-3)
@@ -46,7 +47,7 @@ def experiment_name(base: str, model_type: str) -> str:
 
 
 def run_seed_pass(args, datasets, y, class_names, windows, output_dir: Path | None, seed: int) -> dict[str, dict]:
-    from ego_action_baselines import evaluate_predictions, run_experiment
+    from ego_action_baselines import evaluate_predictions, make_split, run_experiment, train_gated_fusion
 
     results: dict[str, dict] = {}
     for name, X in datasets.items():
@@ -78,6 +79,19 @@ def run_seed_pass(args, datasets, y, class_names, windows, output_dir: Path | No
             extra={"num_test": int(len(test_idx)), "purge_overlap": bool(args.purge_overlap), "seed": int(seed)},
         )
         results[fusion_name] = {"metrics": metrics, "probs": probs, "test_idx": test_idx}
+    if getattr(args, "gated_fusion", False) and "rgb_only" in datasets and "hand_joints_only" in datasets:
+        train_idx, test_idx = make_split(windows, y, args.test_fraction, seed, args.split_strategy, args.purge_overlap)
+        probs, history = train_gated_fusion(
+            datasets["rgb_only"], datasets["hand_joints_only"], y, train_idx, test_idx,
+            len(class_names), args.epochs, args.learning_rate, args.l2, seed,
+        )
+        metrics = evaluate_predictions(
+            "rgb_hand_gated_fusion", probs, y, test_idx, class_names, windows, output_dir,
+            model_label="gated_fusion", split_strategy=args.split_strategy, history=history,
+            extra={"num_test": int(len(test_idx)), "purge_overlap": bool(args.purge_overlap), "seed": int(seed),
+                   "mean_rgb_gate": history[-1].get("test_mean_rgb_gate")},
+        )
+        results["rgb_hand_gated_fusion"] = {"metrics": metrics, "probs": probs, "test_idx": test_idx}
     return results
 
 

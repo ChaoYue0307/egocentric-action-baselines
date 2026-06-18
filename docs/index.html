@@ -204,7 +204,8 @@ const results = {
   rgb_only: { label: "RGB only", accuracy: 0.2574, macro_f1: 0.162, weighted_f1: 0.2304 },
   hand_joints_only: { label: "Hand joints only", accuracy: 0.4706, macro_f1: 0.2595, weighted_f1: 0.439 },
   rgb_hand_fusion: { label: "RGB + hand early fusion", accuracy: 0.3566, macro_f1: 0.2619, weighted_f1: 0.3555 },
-  rgb_hand_late_fusion: { label: "RGB + hand late fusion", accuracy: 0.3272, macro_f1: 0.19, weighted_f1: 0.329 }
+  rgb_hand_late_fusion: { label: "RGB + hand late fusion", accuracy: 0.3272, macro_f1: 0.19, weighted_f1: 0.329 },
+  rgb_hand_gated_fusion: { label: "RGB + hand gated fusion", accuracy: 0.3493, macro_f1: 0.2494, weighted_f1: 0.349 }
 };
 const stepCopy = {
   rgb: ["RGB baseline", "RGB asks whether the scene itself reveals the action. For pour-over coffee, kettle position and dripper context can be highly informative."],

@@ -38,6 +38,13 @@ Full episode, 1093 windows, 18 classes, mean ± std over 5 seeds
 | hand_joints_only | 0.469 ± 0.002 | 0.267 ± 0.007 |
 | rgb_hand_fusion (early) | 0.358 ± 0.002 | 0.264 ± 0.005 |
 | rgb_hand_late_fusion | 0.335 ± 0.005 | 0.207 ± 0.015 |
+| rgb_hand_gated_fusion | 0.355 ± 0.006 | 0.262 ± 0.010 |
+
+Frozen DINOv2 embeddings (same head and split) lift `rgb_only` to 0.312 and
+early fusion to 0.408 (`outputs/dino_ablation/`) — the representation helps but
+hands still win. Gated fusion learns a per-window RGB/hand weight that settles
+near 0.51 and only matches fixed fusion; without auxiliary expert supervision
+and a reduced gate learning rate it collapses onto one modality.
 
 Cross-split comparison for `hand_joints_only`
 (`outputs/split_comparison/`): stratified 0.941, chronological 0.004,
@@ -80,6 +87,9 @@ available before running a batch evaluation.
 - RGB features can overfit scene layout.
 - Hand joints can be noisy or missing.
 - Early fusion lets a weak modality drag down a strong one.
+- A learned gate overfits and collapses onto one expert without regularization.
+- Errors concentrate among same-object verbs (kettle hold/grasp/lift/move),
+  which is verb-granularity difficulty, not object confusion.
 - MLP results can vary more with seed and small sample size.
 
 ## Next Work

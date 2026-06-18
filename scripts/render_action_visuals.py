@@ -25,6 +25,7 @@ def render(summary_path: Path, output_path: Path) -> None:
         ("Hand joints only", experiments["hand_joints_only"], "#a78bfa"),
         ("RGB + hand early fusion", experiments["rgb_hand_fusion"], "#34d399"),
         ("RGB + hand late fusion", experiments.get("rgb_hand_late_fusion"), "#fbbf24"),
+        ("RGB + hand gated fusion", experiments.get("rgb_hand_gated_fusion"), "#f472b6"),
     ]
     parts = []
     y = 104

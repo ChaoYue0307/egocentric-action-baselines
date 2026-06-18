@@ -91,14 +91,30 @@ Every test class keeps train support (no label shift) and no frame appears on
 both sides (no leakage). It measures within-instance generalization — a weaker
 claim than cross-episode generalization, but an honest one.
 
-## Early vs Late Fusion
+## Early vs Late vs Gated Fusion
 
 Early fusion concatenates features before training one classifier. Late fusion
 trains one classifier per modality and averages their predicted probabilities.
-Early fusion can model cross-modal interactions but lets a weak modality drag
-down a strong one inside a single head; late fusion keeps modalities independent
-but cannot model their interactions. Neither automatically beats the best
-single modality — making fusion help is a research problem, not a default.
+Gated fusion trains one expert per modality plus a small gate network that emits
+a per-window weight, so the model can learn *when* to trust each modality
+instead of fixing the mix in advance. Early fusion can model cross-modal
+interactions but lets a weak modality drag down a strong one; late fusion keeps
+modalities independent but cannot model interactions; gated fusion is the most
+flexible but needs the most data and is prone to **gate collapse** — driving
+the weight to 0 or 1 and overfitting one expert. Auxiliary supervision of each
+expert and a small gate learning rate keep the gate soft. On one episode none of
+the three beats the best single modality: making fusion help is a research
+problem, not a default.
+
+## Confusion Structure
+
+A confusion matrix records which true classes get predicted as which other
+classes. Reading the largest off-diagonal entries tells you *what kind* of
+mistake a model makes. Here the confusions cluster among verbs that act on the
+same object (hold / grasp / lift / move the kettle), not among different
+objects — so the difficulty is fine-grained verb recognition, an egocentric
+hallmark, rather than object recognition. `top_confusions.csv` surfaces these
+pairs per experiment.
 
 ## Calibration and ECE
 
