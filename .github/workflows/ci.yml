@@ -24,5 +24,7 @@ jobs:
         run: ruff check .
       - name: Run tests
         run: pytest -q
+      - name: Execute notebooks
+        run: pytest --nbmake notebooks/
       - name: Check CLI help
         run: python scripts/run_ablation.py --help
